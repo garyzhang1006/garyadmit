@@ -30,6 +30,11 @@ def _history_file(name: str) -> Path | None:
     return f if name.replace("-", "").isdigit() and f.exists() else None
 
 
+def _load_saved(path: Path) -> dict:
+    with _lock:  # write-backs rewrite the file in place, so a read outside the lock can catch it half-written
+        return json.loads(path.read_text())
+
+
 def _meta_from(req: dict) -> dict:
     essay_type = req.get("essay_type") or "personal"
     raw_limit = str(req.get("word_limit") or "").strip()
@@ -56,7 +61,7 @@ def _do_revise(req: dict, progress) -> dict:
         path = _history_file(rid)
         if not path:
             raise ValueError("That saved review was not found. Run the review again, then ask for a revision.")
-        saved = json.loads(path.read_text())
+        saved = _load_saved(path)
     meta = saved["meta"] if saved else _meta_from(req)
     result = revise(
         saved["essay"] if saved else req.get("essay", ""),
@@ -79,7 +84,7 @@ def _do_chat(req: dict, progress) -> dict:
         path = _history_file(rid)
         if not path:
             raise ValueError("That saved review was not found. Run the review again, then ask for changes.")
-        saved = json.loads(path.read_text())
+        saved = _load_saved(path)
     meta = saved["meta"] if saved else _meta_from(req)
     original = saved["essay"] if saved else str(req.get("essay") or "")
     history = req.get("history") if isinstance(req.get("history"), list) else []
@@ -160,7 +165,7 @@ def make_handler(corpus_path: str | None):
                 f = _history_file(name)
                 if not f:
                     return self._json(404, {"error": "not found"})
-                saved = json.loads(f.read_text())
+                saved = _load_saved(f)
                 saved.setdefault("id", name)  # reviews saved before ids existed
                 return self._json(200, saved)
             if path == "/api/status":

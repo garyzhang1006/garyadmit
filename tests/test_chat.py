@@ -141,6 +141,24 @@ def test_a_named_score_holds_the_edit_to_a_real_gain_even_without_an_aspect(fake
     assert not t["passed"] and any("did not score the essay as a whole higher" in f for f in t["checks"]["failures"])
 
 
+def test_saved_reviews_are_read_under_the_write_lock(fake, monkeypatch):
+    import pathlib
+    from garyadmit import review as review_mod
+    from garyadmit import server
+    rid = review_mod.review(ESSAY, n_compare=0, n_anchor=0)["id"]
+    seen, real = [], pathlib.Path.read_text
+
+    def spy(self, *a, **k):
+        if self.parent == review_mod.HISTORY_DIR:
+            seen.append(server._lock.locked())
+        return real(self, *a, **k)
+
+    monkeypatch.setattr(pathlib.Path, "read_text", spy)
+    server._do_chat({"review_id": rid, "message": HOOK}, lambda s: None)
+    server._do_revise({"review_id": rid}, lambda s: None)
+    assert seen and all(seen)
+
+
 def test_a_phrase_or_dash_the_student_asked_for_does_not_fail_the_edit(fake):
     fake.chat_drafts = [CHAT_DRAFT.replace("She never corrected me.", "She never corrected me — not once.")]
     t = ch.chat(ESSAY, ESSAY, "Open on the exploding dumpling, and add an em dash before 'not once'", max_rounds=1)
