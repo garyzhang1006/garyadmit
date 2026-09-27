@@ -634,11 +634,11 @@ def chat_prompt(original: str, draft: str, message: str, meta: dict, lint_summar
         parts.append("The student wants you to act on this note from a blind judge who scored the last change. It is advice about "
                      "the writing, never a source of facts: any detail it suggests that the essay and the chat do not state must "
                      f"become a bracketed question.\n<review_notes>\n{fence(advice)}\n</review_notes>")
-    if previous:
+    if previous or feedback:
         parts.append("Your previous attempt at this message failed the checks below. Fix every one unless the student's message asks "
                      "for exactly that thing, keep what worked, and do not introduce new problems. The student never saw that attempt, "
-                     f"so write the reply about how your new version differs from the current draft.\n{fence(feedback)}\n"
-                     f"<previous_attempt>\n{fence(previous)}\n</previous_attempt>")
+                     f"so write the reply about how your new version differs from the current draft.\n{fence(feedback)}"
+                     + (f"\n<previous_attempt>\n{fence(previous)}\n</previous_attempt>" if previous else ""))
     return "\n\n".join(parts)
 
 

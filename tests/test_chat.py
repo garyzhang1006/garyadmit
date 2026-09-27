@@ -120,6 +120,12 @@ def test_long_student_messages_count_as_facts_in_full(fake):
     assert detail in fake.fidelity_prompts[0].split("</original>")[0]
 
 
+def test_retry_after_an_empty_draft_carries_the_failure(fake):
+    fake.chat_drafts = ["", CHAT_DRAFT]
+    t = ch.chat(ESSAY, ESSAY, HOOK)
+    assert "The draft is empty" in fake.chat_prompts[1] and t["passed"] and len(t["rounds"]) == 2
+
+
 def test_failed_rating_is_reported_not_fatal(fake):
     fake.fail_rating = True
     t = ch.chat(ESSAY, ESSAY, HOOK, max_rounds=1)
