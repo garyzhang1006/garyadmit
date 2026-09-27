@@ -117,3 +117,17 @@ def test_revise_refuses_short_text(fake):
     import pytest
     with pytest.raises(ValueError):
         rv.revise("Too short to revise.")
+
+
+def test_cli_revise_uses_saved_review_and_prints_draft(fake, capsys, tmp_path):
+    from garyadmit import cli
+    from garyadmit.review import review
+    review(ESSAY, n_compare=0, n_anchor=0)
+    assert cli.latest_review_of("  " + ESSAY + "\n")["essay"] == ESSAY.strip()
+    assert cli.latest_review_of("A different essay entirely.") is None
+    p = tmp_path / "e.txt"
+    p.write_text(ESSAY)
+    assert cli.main(["revise", str(p)]) == 0
+    out = capsys.readouterr().out
+    assert "VERIFIED" in out and "REVISED DRAFT" in out and "[what she said about the pleats]" in out
+    assert "Cut the opener" in out

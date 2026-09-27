@@ -127,3 +127,73 @@ def to_text(r: dict) -> str:
     if dropped:
         out.append(f"  ({dropped} reviewer claim(s) dropped because their quotes were not in your essay.)")
     return "\n".join(out)
+
+
+def revision_to_text(v: dict) -> str:
+    out = []
+    bar = "=" * 96
+    checks = v["checks"]
+    jd = checks.get("judge") or {}
+    out += [bar, f"  GARYADMIT REVISION  {'VERIFIED' if v['verified'] else 'NOT VERIFIED'}", bar]
+    if v["verified"]:
+        won = [c for c, s in jd.get("category_share", {}).items() if s > 0.5]
+        lost = [c for c, s in jd.get("category_share", {}).items() if s < 0.5]
+        line = "A blind judge preferred the revised draft over your original in both orders"
+        line += f", winning on {', '.join(won)}" if won else ""
+        line += f" and losing on {', '.join(lost)}" if lost else ""
+        out.append(_wrap(f"{line}. {jd.get('decisive_difference', '')}", "  "))
+        if jd.get("voice_share", 0) > 0.5:
+            out.append(_wrap("The judge also said it sounds more like one specific real teenager than your original does.", "  "))
+    else:
+        out.append("  This draft did not pass every check, so treat it as a starting point, not a finished essay:")
+        out += [_wrap(f"- {f}", "  ") for f in checks["failures"]]
+    out.append("")
+
+    d = v["diagnosis"]
+    out.append("WHAT THE ESSAY IS REALLY ABOUT")
+    out.append(_wrap(d.get("core", "")))
+    out.append(_wrap(f"Holding it back: {d.get('holding_back', '')}"))
+    if d.get("best_material"):
+        out.append(_wrap(f"Best material: \"{d['best_material']}\""))
+    out.append("")
+
+    vc = v["voice"]
+    out.append("YOUR VOICE")
+    out.append(_wrap(vc.get("sounds_like", "")))
+    for q in vc.get("best_lines", []):
+        out.append(_wrap(f"+ \"{q}\"", "   "))
+    for o in vc.get("off_voice", []):
+        out.append(_wrap(f"- \"{o['quote']}\" ({o['why']})", "   "))
+    out.append("")
+
+    out.append("THE MOVES, BIGGEST FIRST")
+    for i, m in enumerate(v["moves"], 1):
+        out.append(_wrap(f"{i}. {m['title']} [{m['kind']}]", "  "))
+        if m.get("target"):
+            out.append(_wrap(f"Changes: \"{m['target']}\"", "     "))
+        out.append(_wrap(f"Problem: {m['problem']}", "     "))
+        out.append(_wrap(f"Do this: {m['change']}", "     "))
+        if m.get("rewrite"):
+            out.append(_wrap(f"New: {m['rewrite']}", "     "))
+        out.append(_wrap(f"Effect: {m['reader_effect']}", "     "))
+    out.append("")
+
+    if v["questions"]:
+        out.append("QUESTIONS ONLY YOU CAN ANSWER (fill these in before you use the draft)")
+        for q in v["questions"]:
+            out.append(_wrap(f"{q['placeholder']}  {q['question']}", "  "))
+        out.append("")
+
+    out.append(f"REVISED DRAFT ({checks.get('word_count', 0)} words"
+               + (f" / {v['meta']['word_limit']}" if v["meta"].get("word_limit") else "") + ")")
+    for para in [p for p in v["draft"].split("\n") if p.strip()]:
+        out.append(_wrap(para, "  "))
+        out.append("")
+    for k in jd.get("keep", []):
+        out.append(_wrap(f"Worth keeping from your original: \"{k['quote']}\" ({k['why']})", "  "))
+    dsh = v.get("diff") or {}
+    out.append(f"  Kept {dsh.get('kept_share', 0):.0%} of your words; {dsh.get('new_share', 0):.0%} of the draft is new or moved."
+               + (f" Took {len(v['rounds'])} rounds." if len(v.get("rounds", [])) > 1 else ""))
+    if checks.get("unverified_quotes_dropped"):
+        out.append(f"  ({checks['unverified_quotes_dropped']} quote(s) dropped because they were not in your essay.)")
+    return "\n".join(out)

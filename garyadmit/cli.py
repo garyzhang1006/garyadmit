@@ -1,10 +1,11 @@
-"""Command line entry point: `garyadmit review|serve|similar|corpus|history`."""
+"""Command line entry point: `garyadmit review|revise|serve|similar|corpus|history|bench`."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import sys
+import unicodedata
 from collections import Counter
 from pathlib import Path
 
@@ -48,6 +49,55 @@ def cmd_review(a) -> int:
     if a.json:
         Path(a.json).write_text(json.dumps(r, indent=1))
     print(to_text(r))
+    return 0
+
+
+def latest_review_of(text: str) -> dict | None:
+    """The newest saved review of exactly this essay, so a revision can use its findings."""
+    from . import review as rv
+
+    want = unicodedata.normalize("NFC", text.strip().replace("\r\n", "\n"))
+    for f in sorted(rv.HISTORY_DIR.glob("*.json"), reverse=True)[:200]:
+        try:
+            r = json.loads(f.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if r.get("essay") == want:
+            r.setdefault("id", f.stem)
+            return r
+    return None
+
+
+def cmd_revise(a) -> int:
+    from . import review as rv
+    from .report import revision_to_text
+    from .revise import revise
+
+    text = _read(a.file)
+    saved = None if a.no_review else latest_review_of(text)
+    meta = saved["meta"] if saved else {}
+    if saved:
+        print(f"  · Using your saved review from {saved.get('created') or saved['id']}", file=sys.stderr)
+    limit = a.limit if a.limit is not None else (
+        meta.get("word_limit") if saved else (650 if a.essay_type == "personal" else None))
+    try:
+        v = revise(
+            text, prompt=a.prompt or meta.get("prompt", ""), essay_type=a.essay_type, word_limit=limit,
+            school=a.school or meta.get("school", ""), review=saved, model=a.model,
+            progress=lambda s: print(f"  · {s}", file=sys.stderr, flush=True),
+        )
+    except (llm.LLMError, ValueError) as err:
+        print(f"garyadmit: {err}", file=sys.stderr)
+        return 1
+    if saved:  # keep it with the review so the web app's History shows it too
+        path = rv.HISTORY_DIR / f"{saved['id']}.json"
+        if path.exists():
+            current = json.loads(path.read_text())
+            current["revision"] = v
+            path.write_text(json.dumps(current, indent=1))
+    if a.json:
+        Path(a.json).write_text(json.dumps(v, indent=1))
+    print(revision_to_text(v))
     return 0
 
 
@@ -120,12 +170,20 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("file")
     _common(p)
     p.add_argument("--model", default=None, help="Claude model alias for judging (default: opus)")
-    p.add_argument("--fast", action="store_true", help="use sonnet for everything (faster, lighter on usage)")
+    p.add_argument("--fast", action="store_true", help="use sonnet for everything")
     p.add_argument("--compare", type=int, default=3, help="head-to-heads against similar published essays (default 3)")
     p.add_argument("--anchors", type=int, default=4, help="blind comparisons against published essays of known standing (default 4, max 4)")
     p.add_argument("--no-compare", action="store_true", help="skip all comparisons (rubric-only score)")
     p.add_argument("--json", default=None, help="also write the full result to this JSON file")
     p.set_defaults(fn=cmd_review)
+
+    p = sub.add_parser("revise", help="write a revision plan and draft, checked against your original ('-' for stdin)")
+    p.add_argument("file")
+    _common(p)
+    p.add_argument("--model", default=None, help="Claude model alias (default: opus)")
+    p.add_argument("--no-review", action="store_true", help="ignore any saved review of this essay")
+    p.add_argument("--json", default=None, help="also write the full result to this JSON file")
+    p.set_defaults(fn=cmd_revise)
 
     p = sub.add_parser("similar", help="list the most similar published essays")
     p.add_argument("file")
