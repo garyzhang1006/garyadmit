@@ -54,17 +54,22 @@ def _asks(bracket: str) -> bool:
     return inner.endswith("?") or QUESTION_START.match(inner) is not None
 
 
+def _ems(text: str) -> int:
+    return text.count("—") + text.count(" -- ")
+
+
 def _em_rate(text: str) -> float:
-    return (text.count("—") + text.count(" -- ")) / max(1, word_count(text)) * 100
+    return _ems(text) / max(1, word_count(text)) * 100
 
 
 def gates(original: str, revised: str, meta: dict, placeholders: bool = True, base: str | None = None) -> list[str]:
     """Mechanical checks on a draft. Returns one plain-language failure per problem; empty means it passed.
-    `base` is the draft a chat edit started from, when that is not the original."""
+    `base` is the draft a chat edit started from; when given, only what the edit added can fail."""
     if not revised.strip():
         return ["The draft is empty."]
     fails = []
-    if " ".join(revised.split()) == " ".join((original if base is None else base).split()):
+    ref = original if base is None else base
+    if " ".join(revised.split()) == " ".join(ref.split()):
         fails.append("The draft is identical to the original." if base is None
                      else "The new version is identical to the draft it started from.")
     limit = meta.get("word_limit")
@@ -73,13 +78,14 @@ def gates(original: str, revised: str, meta: dict, placeholders: bool = True, ba
         fails.append(f"The draft is {wc} words, over the {limit}-word limit. Brackets count toward the limit.")
     # Questions in brackets may quote the student's own phrasing, so only the prose is checked.
     prose = strip_brackets(revised)
-    new = sorted(_phrases(prose) - _phrases(original))
+    new = sorted(_phrases(prose) - _phrases(ref))
     if new:
-        fails.append("The draft adds stock or AI-sounding phrases the original did not have: "
+        fails.append(f"The draft adds stock or AI-sounding phrases the {'original' if base is None else 'previous version'} did not have: "
                      + ", ".join(f'"{p}"' for p in new) + ".")
-    if _moral_ending(prose) and not _moral_ending(original):
+    if _moral_ending(prose) and not _moral_ending(ref):
         fails.append('The draft now ends by stating the lesson ("I learned...", "I realized..."). End on a moment or image instead.')
-    if _em_rate(revised) > max(_em_rate(original), 1.0):
+    # A chat edit that cuts words raises the rate of dashes it never touched, so it is held to the count instead.
+    if (_em_rate(revised) > max(_em_rate(original), 1.0)) if base is None else (_ems(revised) > _ems(base)):
         fails.append("The draft adds em dashes, which read as AI-polished prose. Use periods and commas.")
     n = len(BRACKET.findall(revised))
     if n and not placeholders:
