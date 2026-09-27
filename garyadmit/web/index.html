@@ -484,6 +484,7 @@ async function startRevision() {
     const v = await pollJob(job, j => mount($("#betterBody"), html`<ol class="ministeps">${j.progress.map(p => html`<li>${p}</li>`)}${j.status === "running" ? html`<li class="wait">Working</li>` : ""}</ol>`));
     r.revision = v;
     if (current === r) mount($("#better"), revisionHtml(v));
+    if (current === r && !(r.chat || []).length) { versions = [v.draft]; showWorking(); }
   } catch (e) {
     if (current === r) mount($("#better"), betterIntro(String(e)));
   }
