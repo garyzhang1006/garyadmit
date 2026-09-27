@@ -126,7 +126,17 @@ def review_context(r: dict | None) -> str:
     return "\n".join(lines)
 
 
-def judge(base: str, candidate: str, meta: dict, model: str) -> dict:
+def _name_drafts(text: str, cand_label: str, names: tuple[str, str]) -> str:
+    """The judge says "Draft 1" and "Draft 2"; the reader needs to know which draft that was."""
+    base_name, cand_name = names
+    other = "2" if cand_label == "1" else "1"
+    text = re.sub(rf"\b[Dd]raft[ _]?{cand_label}\b", cand_name, text)
+    text = re.sub(rf"\b[Dd]raft[ _]?{other}\b", base_name, text)
+    return re.sub(r"(^|[.!?]\s+)([a-z])", lambda m: m.group(1) + m.group(2).upper(), text)
+
+
+def judge(base: str, candidate: str, meta: dict, model: str,
+          names: tuple[str, str] = ("your original", "the revision")) -> dict:
     """Which draft makes the stronger case, judged in both orders; the candidate is
     "better" only if it wins both, because judges favor a position."""
     orders = []
@@ -135,6 +145,9 @@ def judge(base: str, candidate: str, meta: dict, model: str) -> dict:
         r = llm.ask_json(rubric.REVISION_JUDGE_SYSTEM, rubric.revision_judge_prompt(d1, d2, meta),
                          rubric.REVISION_JUDGE_SCHEMA, model=model)
         label = "1" if cand_first else "2"
+        r["decisive_difference"] = _name_drafts(r["decisive_difference"], label, names)
+        k = r.get("loser_does_better") or {}
+        r["loser_does_better"] = {**k, "why": _name_drafts(k.get("why", ""), label, names)}
         orders.append({**r, "cand_label": label, "cand_won": r["winner"] == label})
     wins = sum(o["cand_won"] for o in orders)
     verdict = "better" if wins == 2 else "worse" if wins == 0 else "split"

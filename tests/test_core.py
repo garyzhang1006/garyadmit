@@ -157,8 +157,9 @@ class FakeLLM:
                 revised_first = self.essay[:30] not in d1
                 w = "1" if revised_first == (self.judge_mode == "revised") else "2"
             return {"winner": w, "confidence": "high", "category_winners": {c: w for c in rubric.CATEGORIES},
-                    "voice_winner": w, "decisive_difference": "The revised draft starts in the kitchen.",
-                    "loser_does_better": {"quote": "asked who had taught me to cheat", "why": "the funniest line"}}
+                    "voice_winner": w, "decisive_difference": f"Draft {w} starts in the kitchen.",
+                    "loser_does_better": {"quote": "asked who had taught me to cheat",
+                                          "why": f"draft_{'2' if w == '1' else '1'} has the funniest line"}}
         if "winner" in props:
             winner = "1"  # default: pure position bias, which must come out as a split
             if self.prefer_opponent:

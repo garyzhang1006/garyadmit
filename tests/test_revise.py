@@ -131,3 +131,10 @@ def test_cli_revise_uses_saved_review_and_prints_draft(fake, capsys, tmp_path):
     out = capsys.readouterr().out
     assert "VERIFIED" in out and "REVISED DRAFT" in out and "[what she said about the pleats]" in out
     assert "Cut the opener" in out
+    assert "assumes you answer the 1 bracketed question with true details" in out
+
+
+def test_judge_reasons_name_the_drafts_instead_of_positions(fake):
+    jd = rv.revise(ESSAY)["checks"]["judge"]
+    assert jd["decisive_difference"] == "The revision starts in the kitchen."
+    assert jd["keep"][0]["why"] == "Your original has the funniest line"

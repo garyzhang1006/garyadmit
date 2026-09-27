@@ -144,6 +144,10 @@ def revision_to_text(v: dict) -> str:
         out.append(_wrap(f"{line}. {jd.get('decisive_difference', '')}", "  "))
         if jd.get("voice_share", 0) > 0.5:
             out.append(_wrap("The judge also said it sounds more like one specific real teenager than your original does.", "  "))
+        if v["questions"]:
+            n = len(v["questions"])
+            out.append(_wrap(f"This verdict assumes you answer the {n} bracketed question{'s' if n > 1 else ''} with true details; "
+                             "the judge read each as a plain detail of that kind.", "  "))
     else:
         out.append("  This draft did not pass every check, so treat it as a starting point, not a finished essay:")
         out += [_wrap(f"- {f}", "  ") for f in checks["failures"]]
