@@ -489,6 +489,93 @@ async function startRevision() {
   }
 }
 
+// ---- chat edits ------------------------------------------------------------
+const SUGGEST = [
+  ["Make the hook a 10/10", "Make the hook a 10/10"],
+  ["Make the ending land harder", "Make the ending land harder"],
+  ["Cut 50 words", "Cut 50 words without losing anything good"],
+  ["Does this sound like me?", "Does this sound like a real 17-year-old wrote it? Point to the lines that don't."],
+];
+let versions = [];  // working drafts, oldest first; the last is on screen and is what the next message edits
+let chatBusy = false;
+const working = () => versions[versions.length - 1];
+const num = x => Number.isInteger(x) ? String(x) : x.toFixed(1);
+
+function ratingHtml(g) {
+  if (!g) return "";
+  const short = g.target && g.after < g.target;
+  return html`<div class="rating"><div><b>${cap(g.aspect)}</b><span class="score">${num(g.before)} → ${num(g.after)}</span>/ 10
+      <span class="caption">blind judge, both orders</span></div>
+    ${g.after < 10 && g.to_ten ? html`<div class="w">${short ? `Short of your ${g.target}. ` : ""}What would make it a 10: ${g.to_ten}</div>` : ""}
+    <div class="w">${g.overall === "better" ? "The judge also preferred the whole essay after this change."
+      : g.overall === "worse" ? "The judge preferred the whole essay before this change, so consider undoing it."
+      : "The judge split on the whole essay, so this change may not help overall."}</div></div>`;
+}
+
+function turnHtml(t, i) {
+  const fails = t.checks.failures;
+  return html`<div class="msg me">${t.message}</div>
+    <div class="msg bot"><div>${t.reply}</div>
+    ${t.edited ? html`
+      ${t.changes.length ? html`<ul class="changes">${t.changes.map(c => html`<li>${c}</li>`)}</ul>` : ""}
+      ${ratingHtml(t.rating)}
+      ${fails.length ? html`<div class="banner no"><b>Checks that failed</b><ul>${fails.map(f => html`<li>${f}</li>`)}</ul></div>` : ""}
+      ${t.questions.length ? html`<div class="w">Fill these in with true details, or cut the line:</div>${t.questions.map(q => html`<div class="w"><mark class="ask">${q.placeholder}</mark> ${q.question}</div>`)}` : ""}
+      <div class="toolbar"><button class="btn-link" data-turn="${i}" data-act="diff">Show what changed</button><button class="btn-link" data-turn="${i}" data-act="use">Use this version</button></div>` : ""}
+    </div>`;
+}
+
+function threadHtml(r, pending) {
+  const out = (r.chat || []).map(turnHtml);
+  if (pending) out.push(html`<div class="msg me">${pending.message}</div><div class="msg bot">${pending.error
+    ? html`<div class="err">${pending.error}</div>`
+    : html`<ol class="ministeps">${pending.steps.map(s => html`<li>${s}</li>`)}<li class="wait">Working</li></ol>`}</div>`);
+  return out.length ? html`${out}` : html`<p class="empty">Nothing yet. Ask for a change, or ask a question about the essay.</p>`;
+}
+
+function chipsHtml(r) {
+  const turns = r.chat || [];
+  if (!turns.length) return html`${SUGGEST.map(([label, say]) => html`<button class="btn-link chip" data-say="${say}">${label}</button>`)}`;
+  const g = turns[turns.length - 1].rating;
+  return g && g.target && g.after < g.target && g.to_ten
+    ? html`<button class="btn-link chip" data-say="${`Push ${g.aspect} closer to a ${g.target}. The judge said: ${g.to_ten}`}">Push ${g.aspect} closer to ${g.target}</button>`
+    : html``;
+}
+
+function chatHtml(r) {
+  return html`<h2>Ask for changes</h2>
+    <p class="lede">Type what you want changed, like "make the hook a 10/10" or "cut 50 words", or ask a question. Each change keeps your facts and voice, gets the same invented-fact check as above, and a blind judge scores the part you asked about before and after. On that judge's scale a 10 is the best essay in a reading season, so it will tell you what is still missing. A change takes 1 to 2 minutes and about 4 model calls (up to 8 if the first try fails a check); a question takes one.</p>
+    <div class="chatcols">
+      <div class="panel"><h3><span>Working essay</span><span id="chatWc"></span></h3>
+        <div class="toolbar"><button class="btn-link" id="chatCopy">Copy essay</button><button class="btn-link" id="chatUndo">Undo last change</button><button class="btn-link" id="chatRescore">Edit and re-score</button></div>
+        <div class="draft" id="chatDraft"></div></div>
+      <div class="panel chatpanel">
+        <div class="thread" id="thread">${threadHtml(r)}</div>
+        <div class="chips" id="chips">${chipsHtml(r)}</div>
+        <textarea id="chatInput" rows="3" placeholder="What should change? Enter sends; Shift+Enter starts a new line."></textarea>
+        <div class="send"><span class="caption">Edits the working essay</span><button class="go inline" id="chatSend">Send</button></div>
+      </div>
+    </div>`;
+}
+
+function showWorking(turnIndex) {
+  const box = $("#chatDraft");
+  if (!box) return;
+  const r = current, t = turnIndex == null ? null : (r.chat || [])[turnIndex];
+  box.dataset.turn = t ? String(turnIndex) : "";
+  mount(box, t ? html`${diffHtml(t.diff)}` : html`${withAsks(working())}`);
+  const lim = r.meta && r.meta.word_limit;
+  $("#chatWc").textContent = t ? `what message ${turnIndex + 1} changed`
+    : `${words(working())}${lim ? " / " + lim : ""} words` + (versions.length > 1 ? ` · version ${versions.length}` : "");
+  $("#chatUndo").disabled = versions.length < 2 || chatBusy;
+}
+
+function initChat(r) {
+  // Start from the edited essay when there is one, with every saved change on top of it.
+  versions = [(r.revision && r.revision.draft) || r.essay, ...(r.chat || []).filter(t => t.edited).map(t => t.draft)];
+  showWorking();
+}
+
 function tierLabel(t) { return t === "exemplar" ? "published by admissions office" : t === "admitted" ? "admitted student" : t; }
 
 function render(r) {
@@ -573,6 +660,7 @@ function render(r) {
     </div>
     ${ai ? html`<div class="ai-flag"><b>AI / over-editing flag (${ai.level}):</b> ${ai.evidence}</div>` : ""}
     <section class="better" id="better">${r.revision ? revisionHtml(r.revision) : betterIntro()}</section>
+    <section class="chatbox" id="chat">${chatHtml(r)}</section>
     <div class="cols">
       <div>
         <div class="panel"><h3><span>Scores</span><span>tap a row for reasons</span></h3>${cats}
@@ -596,6 +684,7 @@ function render(r) {
     <div class="panel"><h3><span>Mechanical checks</span><span>${lt.word_count}${lt.word_limit ? " / " + lt.word_limit : ""} words · grade ${lt.reading_grade}</span></h3>${lintHtml}
       ${dropped ? html`<p class="empty">${dropped} reviewer claim(s) were dropped because their quotes did not appear in your essay.</p>` : ""}</div>
     <div class="again"><button class="go inline" id="reviseBtn">Edit and re-score</button></div>`);
+  initChat(r);
   window.scrollTo({ top: 0 });
 }
 
