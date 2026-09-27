@@ -147,6 +147,8 @@ def test_review_pipeline_end_to_end(fake):
     # Hallucinated evidence and edits are dropped.
     assert all(w["quote"] != "This sentence is not in the essay." for rd in r["readers"] for w in rd["weaknesses"])
     assert r["readers"][0]["_unverified_quotes_dropped"] == 1
+    # Both readers flagged the same lines; the merged lists show each once.
+    assert len(r["problems"]) == 1 and len(r["strengths"]) == 1
     assert [e["original"] for e in r["edits"]] == ["Ever since I was little,"]
     assert ESSAY[r["edits"][0]["start"]:r["edits"][0]["end"]] == "Ever since I was little,"
     # The 7-vs-3 voice split went to adjudication.

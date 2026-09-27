@@ -380,12 +380,11 @@ function render(r) {
     </div>`;
   });
 
-  const seen = new Set();
-  const problems = readers.flatMap(x => x.weaknesses)
-    .sort((a, b) => (a.severity === "major" ? 0 : 1) - (b.severity === "major" ? 0 : 1))
-    .filter(w => { const k = w.quote.slice(0, 40); if (seen.has(k)) return false; seen.add(k); return true; })
+  // Older saved reviews lack the server-side merged lists.
+  const problems = (r.problems || readers.flatMap(x => x.weaknesses)
+    .sort((a, b) => (a.severity === "major" ? 0 : 1) - (b.severity === "major" ? 0 : 1)))
     .map(w => html`<div class="issue"><div class="t"><span class="pill ${w.severity}">${w.severity}</span>${w.issue}</div><blockquote>${w.quote}</blockquote><div class="w">${w.why_it_matters}</div></div>`);
-  const strengths = readers.flatMap(x => x.strengths)
+  const strengths = (r.strengths || readers.flatMap(x => x.strengths))
     .map(s => html`<div class="issue good"><div class="t">${s.what}</div><blockquote>${s.quote}</blockquote></div>`);
   const fixes = (readers[1].top_fixes.length ? readers[1].top_fixes : readers[0].top_fixes).slice(0, 3)
     .map((f, i) => html`<div class="issue"><div class="t">${i + 1}. ${f.fix}</div><div class="w">${f.why}</div></div>`);

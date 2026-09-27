@@ -14,6 +14,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 from concurrent.futures import ThreadPoolExecutor
+from itertools import chain, zip_longest
 from pathlib import Path
 from typing import Callable
 
@@ -69,6 +70,19 @@ def _checked_edits(essay: str, raw: dict) -> list[dict]:
         edits.append({**e, "start": loc[0], "end": loc[1], "original": essay[loc[0]:loc[1]]})
     edits.sort(key=lambda e: e["start"])
     return edits
+
+
+def _dedupe_quoted(essay: str, *lists: list[dict]) -> list[dict]:
+    """Interleave the readers' items and drop any whose quote mostly overlaps one already kept."""
+    kept, spans = [], []
+    for it in (x for x in chain.from_iterable(zip_longest(*lists)) if x):
+        loc = scoring.locate(essay, it.get("quote", ""))
+        if loc and any(min(loc[1], b) - max(loc[0], a) > 0.5 * min(loc[1] - loc[0], b - a) for a, b in spans):
+            continue
+        if loc:
+            spans.append(loc)
+        kept.append(it)
+    return kept
 
 
 def find_similar(essay: str, meta: dict, corpus: Corpus, k: int, fast_model: str) -> tuple[dict, list[dict]]:
@@ -255,6 +269,10 @@ def review(
             {"name": "Admissions officer", **{k: rev_a[k] for k in ("first_impression", "committee_line", "weaknesses", "strengths", "ai_suspicion", "top_fixes", "_unverified_quotes_dropped")}},
             {"name": "Senior editor", **{k: rev_b[k] for k in ("first_impression", "committee_line", "weaknesses", "strengths", "ai_suspicion", "top_fixes", "_unverified_quotes_dropped")}},
         ],
+        # Both readers often flag the same line; the report shows each passage once.
+        "problems": sorted(_dedupe_quoted(essay, rev_a["weaknesses"], rev_b["weaknesses"]),
+                           key=lambda w: w.get("severity") != "major"),
+        "strengths": _dedupe_quoted(essay, rev_a["strengths"], rev_b["strengths"]),
         "edits": edits,
         "lint": lint_report,
         "profile": profile,

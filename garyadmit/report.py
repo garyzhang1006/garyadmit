@@ -51,21 +51,15 @@ def to_text(r: dict) -> str:
     out.append("")
 
     out.append("BIGGEST PROBLEMS")
-    seen = set()
-    n = 0
-    for rd in r["readers"]:
-        for wk in sorted(rd["weaknesses"], key=lambda x: x["severity"] != "major"):
-            key = wk["quote"][:40]
-            if key in seen:
-                continue
-            seen.add(key)
-            n += 1
-            out.append(_wrap(f"{n}. [{wk['severity']}] {wk['issue']}", "  "))
-            out.append(_wrap(f"\"{wk['quote']}\"", "     "))
-            out.append(_wrap(wk["why_it_matters"], "     "))
+    problems = r.get("problems") or sorted((w for rd in r["readers"] for w in rd["weaknesses"]),
+                                           key=lambda x: x["severity"] != "major")
+    for n, wk in enumerate(problems, 1):
+        out.append(_wrap(f"{n}. [{wk['severity']}] {wk['issue']}", "  "))
+        out.append(_wrap(f"\"{wk['quote']}\"", "     "))
+        out.append(_wrap(wk["why_it_matters"], "     "))
     out.append("")
 
-    strengths = [s for rd in r["readers"] for s in rd["strengths"]]
+    strengths = r.get("strengths") or [s for rd in r["readers"] for s in rd["strengths"]]
     out.append("WHAT WORKS (only what the readers could quote)")
     if strengths:
         for s in strengths[:6]:
