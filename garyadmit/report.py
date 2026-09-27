@@ -15,7 +15,7 @@ def h2h_summary(h2h: list[dict]) -> str:
     w = sum(1 for h in h2h if h["verdict"] == "win")
     l = sum(1 for h in h2h if h["verdict"] == "loss")
     s = sum(1 for h in h2h if h["verdict"] == "split")
-    return f"won {w}, lost {l}, split {s}"
+    return f"won {w}, lost {l}, split {s}" + (" (splits carry no weight)" if s else "")
 
 
 def to_text(r: dict) -> str:

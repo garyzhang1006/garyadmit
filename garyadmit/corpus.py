@@ -208,7 +208,7 @@ def pick_anchors(anchors: list[Anchor], targets: list[float], seed_text: str, ex
     ex = _norm(exclude_text)[:300] if exclude_text else None
     chosen, used_groups = [], set()
     for i, t in enumerate(targets):
-        pool = [a for a in anchors if a.group not in used_groups and (not ex or _norm(a.text)[:300] != ex)]
+        pool = [a for a in anchors if (a.group or a.id) not in used_groups and (not ex or _norm(a.text)[:300] != ex)]
         if not pool:
             break
         best = min(abs(a.rating - t) for a in pool)

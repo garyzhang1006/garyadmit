@@ -38,8 +38,8 @@ def cmd_review(a) -> int:
     try:
         r = review(
             text, prompt=a.prompt, essay_type=a.essay_type, word_limit=limit, school=a.school,
-            model=model, fast_model="sonnet", n_compare=0 if a.no_compare else a.compare,
-            n_anchor=0 if a.no_compare else min(a.anchors, 4),
+            model=model, fast_model="sonnet", n_compare=0 if a.no_compare else max(a.compare, 0),
+            n_anchor=0 if a.no_compare else min(max(a.anchors, 0), 4),
             corpus_path=a.corpus, progress=lambda s: print(f"  · {s}", file=sys.stderr, flush=True),
         )
     except (llm.LLMError, ValueError) as err:

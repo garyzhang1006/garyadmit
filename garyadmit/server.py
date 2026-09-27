@@ -1,5 +1,5 @@
-"""Local web app. Stdlib only; binds to 127.0.0.1 so nothing leaves your machine
-except the Claude calls themselves."""
+"""Local web app. Stdlib only; binds to 127.0.0.1. Essays leave the machine only
+through the Claude calls; the page itself also loads its fonts from Google Fonts."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from .review import HISTORY_DIR, get_corpus, review
 
 WEB = Path(__file__).resolve().parent / "web"
 MAX_BODY = 200_000
+KEEP_JOBS = 20
 
 _jobs: dict[str, dict] = {}
 _lock = threading.Lock()
@@ -120,7 +121,12 @@ def make_handler(corpus_path: str | None):
             if not (self.headers.get("Content-Type") or "").startswith("application/json") or (
                     origin and origin.lower() != "http://" + (self.headers.get("Host") or "").lower()):
                 return self._json(403, {"error": "cross-site request refused"})
-            n = int(self.headers.get("Content-Length") or 0)
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                n = -1
+            if n < 0:
+                return self._json(400, {"error": "bad Content-Length"})
             if n > MAX_BODY:
                 return self._json(413, {"error": "essay too long"})
             try:
@@ -129,6 +135,10 @@ def make_handler(corpus_path: str | None):
                 return self._json(400, {"error": "bad JSON"})
             job_id = uuid.uuid4().hex[:12]
             with _lock:
+                # Finished jobs hold whole essays; keep only the most recent ones in memory.
+                finished = [k for k, j in _jobs.items() if j["status"] != "running"]
+                for k in finished[:-KEEP_JOBS]:
+                    del _jobs[k]
                 _jobs[job_id] = {"status": "running", "progress": [], "result": None, "error": None}
             threading.Thread(target=_run_job, args=(job_id, req, corpus_path), daemon=True).start()
             return self._json(202, {"job": job_id})

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from itertools import chain, zip_longest
 from pathlib import Path
@@ -86,7 +87,7 @@ def _dedupe_quoted(essay: str, *lists: list[dict]) -> list[dict]:
 
 
 def find_similar(essay: str, meta: dict, corpus: Corpus, k: int, fast_model: str) -> tuple[dict, list[dict]]:
-    profile = llm.ask_json(rubric.PROFILE_SYSTEM, f"<essay>\n{essay}\n</essay>", rubric.PROFILE_SCHEMA, model=fast_model)
+    profile = llm.ask_json(rubric.PROFILE_SYSTEM, f"<essay>\n{rubric.fence(essay)}\n</essay>", rubric.PROFILE_SCHEMA, model=fast_model)
     query = " ".join([profile["topic"], " ".join(profile["themes"]), essay])
     pool = corpus.search(query, k=30, boost_terms=profile["keywords"], exclude_text=essay)
     want_type = meta.get("essay_type", "personal")
@@ -101,7 +102,7 @@ def find_similar(essay: str, meta: dict, corpus: Corpus, k: int, fast_model: str
     ]
     rr = llm.ask_json(
         rubric.RERANK_SYSTEM,
-        f"Student essay profile:\n{json.dumps(profile, indent=1)}\n\nStudent essay opening:\n{essay[:1200]}\n\n"
+        f"Student essay profile:\n{json.dumps(profile, indent=1)}\n\nStudent essay opening:\n{rubric.fence(essay[:1200])}\n\n"
         f"Candidates:\n{json.dumps(cands, indent=1)}\n\nReturn the {k} most similar, most similar first.",
         rubric.RERANK_SCHEMA, model=fast_model,
     )
@@ -139,8 +140,9 @@ def head_to_head(essay: str, opp_text: str, meta: dict, model: str) -> dict:
             w = r["category_winners"][c]
             pts += 0.5 if w == "tie" else (1.0 if w == r["user_label"] else 0.0)
         cat[c] = pts / len(results)
-    # Explanations come from the order whose verdict matches the majority.
-    lead = next((r for r in results if r["user_won"] == (outcome >= 0.5)), results[0])
+    # Explanations come from an order that matches the verdict; on a split, from the
+    # order the user lost, because the report shows its lesson to the user.
+    lead = next((r for r in results if r["user_won"] == (outcome == 1)), results[0])
     return {
         "outcome": outcome,
         "verdict": "win" if outcome == 1 else "loss" if outcome == 0 else "split",
@@ -170,12 +172,13 @@ def review(
     save: bool = True,
     line_edits: bool = True,
 ) -> dict:
-    essay = essay.strip().replace("\r\n", "\n")
+    essay = unicodedata.normalize("NFC", essay.strip().replace("\r\n", "\n"))
     if len(essay.split()) < 50:
         raise ValueError("That is under 50 words. Paste the full essay.")
     model = model or llm.DEFAULT_MODEL
     fast_model = fast_model or llm.FAST_MODEL
     say = progress or (lambda s: None)
+    usage_before = dict(llm.usage)
     meta = {"prompt": prompt, "essay_type": essay_type, "word_limit": word_limit, "school": school}
 
     lint_report = lint(essay, word_limit)
@@ -204,9 +207,11 @@ def review(
             say(f"Found {len(similar)} similar published essays")
             futs = [(s["essay"], pool.submit(head_to_head, essay, s["essay"].text, meta, model)) for s in similar[:n_compare]]
             for opp, f in futs:
-                h2h.append({**f.result(), "opponent": opp})
+                got = _survive(f, say)
+                if got:
+                    h2h.append({**got, "opponent": opp})
             say("Head-to-head comparisons done")
-        calib = [{**f.result(), "anchor": a} for a, f in zip(anchors, fut_anchor)]
+        calib = [{**got, "anchor": a} for a, f in zip(anchors, fut_anchor) if (got := _survive(f, say))]
         if calib:
             say("Calibration comparisons done")
 
@@ -288,7 +293,8 @@ def review(
              "verdict": c["verdict"], "decisive_difference": c["decisive_difference"]}
             for c in calib
         ],
-        "usage": dict(llm.usage),
+        # Counted from this review's start; overlapping reviews in one server share the counter.
+        "usage": {k: round(llm.usage[k] - usage_before.get(k, 0), 4) for k in llm.usage},
         "models": {"judge": model, "fast": fast_model},
     }
     if save:
@@ -296,6 +302,15 @@ def review(
         stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
         (HISTORY_DIR / f"{stamp}.json").write_text(json.dumps(result, indent=1))
     return result
+
+
+def _survive(fut, say) -> dict | None:
+    """One failed comparison should cost that comparison, not the whole review."""
+    try:
+        return fut.result()
+    except llm.LLMError as err:
+        say(f"A comparison failed and was skipped: {err}")
+        return None
 
 
 def _essay_card(e: Essay) -> dict:

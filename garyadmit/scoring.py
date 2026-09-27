@@ -8,6 +8,10 @@ The rubric alone can say "88", but if the essay then loses blind
 head-to-heads against real published essays rated ~85, the posterior drops
 it. An essay cannot claim to beat real exemplars on paper without beating
 them in an actual comparison.
+
+Splits (the verdict flips when the essays swap places) are left out. They
+mean the judge could not tell, and counting them as draws at the opponent's
+level would drag every weak essay toward the 70-85 opponents.
 """
 
 from __future__ import annotations
@@ -57,6 +61,7 @@ def _loglik(r: float, prior_mu: float, matches: list[tuple[float, float]]) -> fl
 
 def final_score(rubric: float, matches: list[tuple[float, float]]) -> float:
     """MAP rating on a 0.1 grid over [0, 100]. matches = [(opponent_level, outcome)]."""
+    matches = [(lvl, o) for lvl, o in matches if o in (0.0, 1.0)]
     if not matches:
         return round(rubric, 1)
     best_r, best_ll = rubric, -math.inf
@@ -75,19 +80,24 @@ def _norm_char(ch: str) -> str:
 
 
 def _normalize_with_map(text: str) -> tuple[str, list[int]]:
-    """Lowercase, unify quotes/dashes, collapse whitespace; keep an index map back to the original."""
+    """Lowercase, drop accents, unify quotes/dashes, collapse whitespace; keep an index
+    map back to the original. Decomposing per original character keeps the map exact
+    for essays pasted in NFD form (common from macOS)."""
     out, idx = [], []
     prev_space = False
-    for i, ch in enumerate(unicodedata.normalize("NFC", text)):
-        ch = _norm_char(ch).lower()
-        if ch.isspace():
-            if prev_space:
+    for i, raw in enumerate(text):
+        for ch in unicodedata.normalize("NFD", raw):
+            if unicodedata.combining(ch):
                 continue
-            ch, prev_space = " ", True
-        else:
-            prev_space = False
-        out.append(ch)
-        idx.append(i)
+            ch = _norm_char(ch).lower()
+            if ch.isspace():
+                if prev_space:
+                    continue
+                ch, prev_space = " ", True
+            else:
+                prev_space = False
+            out.append(ch)
+            idx.append(i)
     return "".join(out), idx
 
 
@@ -120,6 +130,8 @@ def locate(essay: str, quote: str) -> tuple[int, int] | None:
             return None
     start = emap[j]
     end = emap[min(j + len(nq) - 1, len(emap) - 1)] + 1
+    while end < len(essay) and unicodedata.combining(essay[end]):
+        end += 1  # keep a trailing accent with its letter
     return start, end
 
 
