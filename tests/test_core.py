@@ -93,6 +93,11 @@ She never corrected me. She just ate the broken ones herself and served the good
 Last spring she moved into a care home in Flushing. The first time I visited, I brought frozen dumplings from the supermarket. She looked at the bag, laughed, and asked who had taught me to cheat."""
 
 
+# ESSAY after a chat request for a better hook: the stock opener gives way to its best moment.
+CHAT_DRAFT = ESSAY.replace("Ever since I was little, I have had a passion for helping others. My grandmother taught me the value of hard work.",
+                           "My dumplings leaked, split, and once exploded in the pot. My grandmother ate them anyway.")
+
+
 class FakeLLM:
     """Answers by schema so the whole pipeline runs without a model."""
 
@@ -108,10 +113,40 @@ class FakeLLM:
         self.fail_polish = False
         # "revised", "original", "position" (always picks draft 1), or "polish" (the polish-only rewrite beats everything)
         self.judge_mode = "revised"
+        self.chat_drafts = [CHAT_DRAFT]
+        self.chat_prompts = []
+        self.fidelity_prompts = []
+        self.chat_edit = True
+        self.chat_aspect, self.chat_category, self.chat_target = "the hook (first two or three sentences)", "hook", 10
+        # "new" (the chat edit scores 8 to the old 4 and wins overall), "old" (the reverse), or "position" (draft 1 wins)
+        self.aspect_mode = "new"
+        self.fail_rating = False
 
     def __call__(self, system, prompt, schema, model, effort):
         props = schema["properties"]
         self.calls.append(list(props))
+        if "reply" in props:
+            self.chat_prompts.append(prompt)
+            if not self.chat_edit:
+                return {"reply": "Your hook is generic.", "edit": False, "revised_essay": "", "changes": [],
+                        "aspect": "", "category": "", "target": 0, "questions": []}
+            draft = self.chat_drafts[min(len(self.chat_prompts), len(self.chat_drafts)) - 1]
+            return {"reply": "Opened on the exploding dumpling.", "edit": True, "revised_essay": draft,
+                    "changes": ["Opened on the exploding dumpling"], "aspect": self.chat_aspect,
+                    "category": self.chat_category, "target": self.chat_target, "questions": []}
+        if "score_1" in props:
+            if self.fail_rating:
+                raise llm.LLMError("rating timed out")
+            new_first = "Ever since I was little" not in prompt.split("<draft_1>")[1].split("</draft_1>")[0]
+            if self.aspect_mode == "position":
+                s1, s2, w = 8, 4, "1"
+            else:
+                new, old = (8, 4) if self.aspect_mode == "new" else (4, 8)
+                s1, s2 = (new, old) if new_first else (old, new)
+                w = "1" if s1 > s2 else "2"
+            return {"score_1": s1, "score_2": s2, "why_1": "Draft 1 opens where it opens.", "why_2": "Draft 2 opens where it opens.",
+                    "to_ten_1": "draft 1 needs her exact words.", "to_ten_2": "draft 2 needs her exact words.",
+                    "overall_winner": w, "overall_reason": f"Draft {w} starts in the kitchen."}
         if "scores" in props:
             voice = 3 if "trains new readers" in system else 7  # force a dispute
             return {
@@ -150,6 +185,7 @@ class FakeLLM:
                     "revised_essay": draft,
                     "questions": [{"placeholder": "[what she said about the pleats]", "question": "What did she say?"}]}
         if "invented" in props:
+            self.fidelity_prompts.append(prompt)
             return {"invented": self.invented, "bracket_assumptions": self.assumptions, "voice_drift": {"level": "low", "evidence": ""}}
         if "polished_essay" in props:
             if self.fail_polish:
