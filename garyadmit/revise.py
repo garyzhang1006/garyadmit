@@ -58,13 +58,15 @@ def _em_rate(text: str) -> float:
     return (text.count("—") + text.count(" -- ")) / max(1, word_count(text)) * 100
 
 
-def gates(original: str, revised: str, meta: dict, placeholders: bool = True) -> list[str]:
-    """Mechanical checks on a draft. Returns one plain-language failure per problem; empty means it passed."""
+def gates(original: str, revised: str, meta: dict, placeholders: bool = True, base: str | None = None) -> list[str]:
+    """Mechanical checks on a draft. Returns one plain-language failure per problem; empty means it passed.
+    `base` is the draft a chat edit started from, when that is not the original."""
     if not revised.strip():
         return ["The draft is empty."]
     fails = []
-    if " ".join(revised.split()) == " ".join(original.split()):
-        fails.append("The draft is identical to the original.")
+    if " ".join(revised.split()) == " ".join((original if base is None else base).split()):
+        fails.append("The draft is identical to the original." if base is None
+                     else "The new version is identical to the draft it started from.")
     limit = meta.get("word_limit")
     wc = word_count(revised)
     if limit and wc > limit:
