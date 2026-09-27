@@ -95,7 +95,7 @@ def _evaluate(original: str, facts: str, base: str, raw: dict, meta: dict, model
                 fails.append(f"The blind rating could not run, so there is no before and after score: {err}")
     if fid:
         # Details the working draft already carried (say, from an unverified revision) are not this edit's doing.
-        inherited = [i for i in fid["invented"] if scoring.locate(base, i["text"])]
+        inherited = [i for i in fid["invented"] if scoring.locate(base, i["text"], prefix=False)]
         fid = {**fid, "invented": [i for i in fid["invented"] if i not in inherited],
                "bracket_assumptions": [a for a in fid["bracket_assumptions"] if a["bracket"] not in base]}
     if fid and fid["invented"]:

@@ -101,9 +101,10 @@ def _normalize_with_map(text: str) -> tuple[str, list[int]]:
     return "".join(out), idx
 
 
-def locate(essay: str, quote: str) -> tuple[int, int] | None:
+def locate(essay: str, quote: str, prefix: bool = True) -> tuple[int, int] | None:
     """Find a model-provided quote in the essay, tolerating quote/dash/space differences.
-    Returns (start, end) offsets in the original essay, or None if it is not really there."""
+    Returns (start, end) offsets in the original essay, or None if it is not really there.
+    `prefix=False` refuses the long-prefix fallback, for checks where the unmatched tail is what matters."""
     q = quote.strip().strip('"').strip("“”").strip()
     if len(q) < 3:
         return None
@@ -119,7 +120,7 @@ def locate(essay: str, quote: str) -> tuple[int, int] | None:
     if j < 0:
         # Models sometimes drop an ellipsis or trailing words; accept a long unique prefix.
         words = nq.split()
-        if len(words) >= 8:
+        if prefix and len(words) >= 8:
             head = " ".join(words[: max(6, len(words) * 2 // 3)])
             j = ne.find(head)
             if j >= 0 and ne.find(head, j + 1) < 0:

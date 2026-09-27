@@ -108,6 +108,16 @@ def test_problems_already_in_the_working_draft_are_not_blamed_on_the_edit(fake):
     assert [i["text"] for i in t["checks"]["inherited"]] == ["not once"]
 
 
+def test_an_invented_clause_added_to_a_sentence_the_essay_already_had_is_caught(fake):
+    old = "She just ate the broken ones herself and served the good ones to guests."
+    new = old[:-1] + " until the week she died."
+    fake.chat_drafts = [CHAT_DRAFT.replace(old, new)]
+    fake.invented = [{"text": new, "why_new": "the essay never says she died"}]
+    t = ch.chat(ESSAY, ESSAY, HOOK, max_rounds=1)
+    assert not t["passed"] and t["checks"]["inherited"] == []
+    assert any("adds facts" in f and "until the week she died" in f for f in t["checks"]["failures"])
+
+
 def test_judge_advice_reaches_the_editor_but_never_counts_as_a_fact(fake):
     advice = "Name the opera she played, like Farewell My Concubine."
     ch.chat(ESSAY, ESSAY, "Push the hook closer to a 10.", advice=advice)

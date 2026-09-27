@@ -213,8 +213,8 @@ def fidelity(original: str, revised: str, model: str) -> dict:
             continue  # the checker quoted something the draft does not say
         if any(a <= loc[0] and loc[1] <= b for a, b in brackets):
             continue  # a question for the student; what it presupposes is checked below
-        if scoring.locate(original, revised[loc[0]:loc[1]]):
-            continue  # the original says it too
+        if scoring.locate(original, revised[loc[0]:loc[1]], prefix=False):
+            continue  # the original says it too, all of it: a new clause on an old sentence still counts
         invented.append({"text": revised[loc[0]:loc[1]], "why_new": item.get("why_new", "")})
     in_draft = {b[1:-1].strip().lower(): b for b in BRACKET.findall(revised)}
     assumptions = []
