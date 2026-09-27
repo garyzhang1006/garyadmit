@@ -29,12 +29,14 @@ From the terminal:
 ```bash
 garyadmit review essay.txt --prompt "Share an essay on any topic of your choice."
 garyadmit review why_us.txt --type supplement --school Tufts --limit 250
+garyadmit revise essay.txt           # revision plan and a checked draft (uses your saved review if there is one)
 garyadmit similar essay.txt          # just list the closest published essays
 garyadmit history                    # past reviews, stored in ~/.garyadmit/history
 garyadmit bench                      # check the scoring against human ratings
+garyadmit bench --revise 8           # check revisions against the originals and a polish-only rewrite
 ```
 
-`--fast` uses Sonnet for everything. `--no-compare` skips the comparisons and returns a rubric-only score, which is faster but less trustworthy.
+`--fast` uses Sonnet for everything. It is not lighter on your usage limit: in a measured review Sonnet wrote about 2.3 times as much output, so the cost came out only about 7% lower. `--no-compare` skips the comparisons and returns a rubric-only score, which is faster but less trustworthy.
 
 ## What a review contains
 
@@ -45,6 +47,20 @@ garyadmit bench                      # check the scoring against human ratings
 - Line edits shown inline on your essay: cuts, rewrites, and comments.
 - Head-to-head results against similar published essays, with links, what decided each one, and what to take from the essays you lost to.
 - Mechanical checks: word count, clichés, AI-tell vocabulary, told emotions, passive voice, résumé lists, moralizing endings, sentence rhythm.
+
+## Make it better
+
+After a review, press **Make it a lot better** (or run `garyadmit revise`). It works in order of impact: what the essay is really about, what is holding it back, which material is strongest, then cuts, scenes, reflection and the ending. Voice and word choice come last. You get the diagnosis, a description of your voice with the lines that already sound like you, the moves ranked biggest first with what each one changes for a reader, and a revised draft shown as changes against your original.
+
+The draft never invents facts about your life. Where it needs a detail only you know, it asks in square brackets, such as `[What you said back to her, word for word]`, at most four times.
+
+It only calls a draft better after these checks pass:
+
+- A blind judge compares the draft with your original in both orders, and the draft has to win both times. The judge is told not to reward polish, and it reports which categories each draft won and anything your original did better.
+- A separate check lists any facts the draft added that your original does not support, and rates how far the voice drifted. An invented fact or high drift fails the draft.
+- Mechanical gates reject drafts that go over the word limit, add clichés, AI-tell or thesaurus phrases your original did not have, add a moral at the end, or use em dashes more often than you do (past one per 100 words).
+
+A draft that fails gets one more round with the failures spelled out. If it still fails, you see it marked NOT VERIFIED, with the reasons. A revision takes two to five minutes and four to eight model calls.
 
 ## Why the score is hard to inflate
 
