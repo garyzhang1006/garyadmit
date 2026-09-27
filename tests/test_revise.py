@@ -54,6 +54,15 @@ def test_diff_segments_rebuild_both_texts():
     assert rv.diff_segments(a, a)["new_share"] == 0.0
 
 
+def test_diff_keeps_each_bracket_whole_so_the_web_can_highlight_it():
+    a = "She laughed. I said nothing back to her."
+    b = "She laughed. [What you said back to her, word for word] I left."
+    d = rv.diff_segments(a, b)
+    assert "".join(s["text"] for s in d["segments"] if s["op"] != "delete") == b
+    assert any("[What you said back to her, word for word]" in s["text"]
+               for s in d["segments"] if s["op"] == "insert")
+
+
 def test_review_context_survives_old_reviews_and_includes_lessons():
     assert rv.review_context(None) == ""
     old = {"score": 52.0, "band": "Typical", "categories": {},

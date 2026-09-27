@@ -77,7 +77,9 @@ def gates(original: str, revised: str, meta: dict, placeholders: bool = True) ->
 
 def diff_segments(a: str, b: str) -> dict:
     """Word-level changes from a to b. Equal and inserted segments rebuild b exactly."""
-    ta, tb = re.findall(r"\S+\s*", a.strip()), re.findall(r"\S+\s*", b.strip())
+    # A bracketed question is one token, so it never splits across segments and the web can highlight it.
+    tok = re.compile(BRACKET.pattern + r"\s*|\S+\s*")
+    ta, tb = tok.findall(a.strip()), tok.findall(b.strip())
     na, nb = [t.strip().lower() for t in ta], [t.strip().lower() for t in tb]
     sm = difflib.SequenceMatcher(None, na, nb, autojunk=False)
     segs = []

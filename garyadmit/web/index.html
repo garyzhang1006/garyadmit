@@ -178,6 +178,33 @@ select, input, textarea, button { font: inherit; color: inherit; }
 .ai-flag { border: 2px solid var(--red); padding: 12px 16px; margin: 0 0 28px; font-size: 16px; }
 .again { display: flex; gap: 12px; margin: 10px 0 30px; flex-wrap: wrap; }
 .err { background: var(--red-soft); border: 1px solid var(--red); padding: 14px 18px; margin: 0 0 20px; font-family: var(--mono); font-size: 14px; white-space: pre-wrap; }
+.better { border: 2px solid var(--ink); background: var(--sheet); padding: 22px 24px 8px; margin: 0 0 32px; box-shadow: 6px 6px 0 var(--red); }
+.better h2 { font-family: var(--display); font-weight: 800; font-size: 30px; letter-spacing: -0.01em; margin: 0 0 8px; }
+.better .lede { font-size: 17px; color: var(--muted); margin: 0 0 14px; max-width: 760px; }
+.better .panel { box-shadow: none; }
+#betterBody { margin-bottom: 16px; }
+.ministeps { list-style: none; padding: 0; margin: 0 0 10px; font-family: var(--mono); font-size: 13px; }
+.ministeps li { padding: 5px 0; animation: fadein .4s both; }
+.ministeps li::before { content: "✓ "; color: var(--green); }
+.ministeps li.wait::before { content: "… "; color: var(--muted); }
+.banner { padding: 12px 16px; margin: 0 0 20px; font-size: 16.5px; border-left: 5px solid; }
+.banner.ok { border-color: var(--green); background: var(--green-soft); }
+.banner.no { border-color: var(--amber); background: var(--amber-soft); }
+.banner ul { margin: 6px 0 0; padding-left: 20px; }
+.move { display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--rule); font-size: 16.5px; }
+.move:last-child { border-bottom: 0; }
+.move .n { font-family: var(--display); font-weight: 800; font-size: 28px; color: var(--red); line-height: 1; }
+.move .mt { font-family: var(--display); font-weight: 600; font-size: 19px; margin-bottom: 4px; }
+.move .tgt { font-style: italic; color: var(--muted); text-decoration: line-through; text-decoration-color: var(--red); margin: 4px 0 8px; }
+.move .new { border-left: 3px solid var(--green); padding-left: 12px; margin: 8px 0; }
+.move .eff { font-size: 15px; color: var(--muted); }
+.bm { margin: 8px 0 2px; padding-left: 12px; border-left: 3px solid var(--green); font-style: italic; }
+.draft { white-space: pre-wrap; font-size: 18.5px; line-height: 1.85; }
+.draft del { color: var(--red); background: var(--red-soft); text-decoration-thickness: 2px; }
+.draft ins { text-decoration: none; background: var(--green-soft); border-bottom: 2px solid var(--green); }
+mark.ask { background: var(--amber-soft); color: inherit; border-bottom: 2px dashed var(--amber); padding: 0 2px; }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
+.toolbar .on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 #history { display: none; position: absolute; right: 20px; top: 84px; width: min(520px, calc(100vw - 40px)); z-index: 5; max-height: 60vh; overflow: auto; }
 #history .row { display: grid; grid-template-columns: 52px minmax(0,1fr); gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--rule); cursor: pointer; font-size: 15px; }
 #history .row b { font-family: var(--display); font-size: 20px; }
@@ -222,7 +249,7 @@ select, input, textarea, button { font: inherit; color: inherit; }
       <input type="number" id="limit" value="650" min="50" max="2000">
       <label for="school">Target school (supplements)</label>
       <input type="text" id="school" placeholder="e.g. Duke">
-      <div class="check"><input type="checkbox" id="fast"><label for="fast">Fast mode (Sonnet; lighter on usage)</label></div>
+      <div class="check"><input type="checkbox" id="fast"><label for="fast">Fast mode (Sonnet)</label></div>
       <button class="go" id="go">Read it like an AO</button>
       <div class="note">Scores are calibrated so the median applicant essay lands around 50 to 60. A 55 is not an insult; it means a reader won't remember it yet. Every score is checked in blind head-to-heads against real published essays on similar topics.</div>
     </aside>
@@ -286,6 +313,23 @@ function show(id) {
 function showError(msg) { show("compose"); mount($("#errBox"), html`<div class="err">${msg}</div>`); }
 $("#newBtn").onclick = () => show("compose");
 
+async function pollJob(job, onProgress) {
+  while (true) {
+    await new Promise(r => setTimeout(r, 1500));
+    const j = await (await fetch("/api/job/" + job)).json();
+    onProgress(j);
+    if (j.status === "done") return j.result;
+    if (j.status === "error") throw new Error(j.error);
+  }
+}
+
+async function startJob(url, body) {
+  const resp = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const { job, error } = await resp.json();
+  if (!job) throw new Error(error || `server returned ${resp.status}`);
+  return job;
+}
+
 let timer;
 $("#go").onclick = async () => {
   const essay = $("#essay").value.trim();
@@ -299,16 +343,8 @@ $("#go").onclick = async () => {
   clearInterval(timer);
   timer = setInterval(() => { $("#elapsed").textContent = `${Math.round((Date.now() - t0) / 1000)}s elapsed · usually 1 to 3 minutes`; }, 500);
   try {
-    const resp = await fetch("/api/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    const { job, error } = await resp.json();
-    if (!job) throw new Error(error || `server returned ${resp.status}`);
-    while (true) {
-      await new Promise(r => setTimeout(r, 1500));
-      const j = await (await fetch("/api/job/" + job)).json();
-      mount($("#steps"), html`${j.progress.map(p => html`<li>${p}</li>`)}${j.status === "running" ? html`<li class="wait">Still reading</li>` : ""}`);
-      if (j.status === "done") { render(j.result); break; }
-      if (j.status === "error") { showError(j.error); break; }
-    }
+    const job = await startJob("/api/review", body);
+    render(await pollJob(job, j => mount($("#steps"), html`${j.progress.map(p => html`<li>${p}</li>`)}${j.status === "running" ? html`<li class="wait">Still reading</li>` : ""}`)));
   } catch (e) {
     showError(String(e));
   } finally { clearInterval(timer); $("#go").disabled = false; }
@@ -346,10 +382,80 @@ function activate(i, scroll) {
   if (scroll === "essay") { const m = $(`.ed[data-i="${CSS.escape(i)}"]`); if (m) m.scrollIntoView({ block: "center", behavior: "smooth" }); }
 }
 
+// ---- revision ------------------------------------------------------------
+let current = null;  // the review on screen
+const ASK = /(\[[^\[\]\n]{3,300}\])/;
+const withAsks = t => String(t || "").split(ASK).map((p, i) => i % 2 ? html`<mark class="ask">${p}</mark>` : p);
+const diffHtml = d => d.segments.map(s => s.op === "equal" ? withAsks(s.text)
+  : s.op === "insert" ? html`<ins>${withAsks(s.text)}</ins>` : html`<del>${s.text}</del>`);
+
+function betterIntro(err) {
+  return html`<h2>Make it a lot better</h2>
+    <p class="lede">GaryAdmit finds what your essay is really about, rebuilds it around your best material in your own voice, and asks you for the details only you know. It only calls the result better if a blind judge prefers it over your original in both orders, and it checks the draft for invented facts and AI-sounding phrases first.</p>
+    ${err ? html`<div class="err">${err}</div>` : ""}
+    <div id="betterBody"><button class="go inline" id="betterBtn">Make it a lot better</button> <span class="caption">2 to 5 minutes · 4 to 8 more model calls</span></div>`;
+}
+
+function revisionHtml(v) {
+  const jd = v.checks.judge || {};
+  const share = jd.category_share || {};
+  const won = CATS.filter(c => share[c] > 0.5), lost = CATS.filter(c => share[c] < 0.5);
+  const nq = v.questions.length;
+  const banner = v.verified
+    ? html`<div class="banner ok"><b>Verified.</b> A blind judge preferred this revision over your original in both orders${won.length ? `, winning on ${won.join(", ")}` : ""}${lost.length ? ` and losing on ${lost.join(", ")}` : ""}. ${jd.decisive_difference || ""}
+        ${jd.voice_share > 0.5 ? html`<br>It also judged that the revision sounds more like one specific real teenager.` : ""}
+        ${nq ? html`<br><span class="caption">This assumes you answer the ${nq} bracketed question${nq > 1 ? "s" : ""} with true details.</span>` : ""}</div>`
+    : html`<div class="banner no"><b>Not verified.</b> Treat this as a starting point, not a finished essay.<ul>${v.checks.failures.map(f => html`<li>${f}</li>`)}</ul></div>`;
+  const d = v.diagnosis, vc = v.voice;
+  const moves = v.moves.map((m, i) => html`<div class="move"><div class="n">${i + 1}</div><div>
+      <div class="mt">${m.title} <span class="pill">${m.kind}</span></div>
+      ${m.target ? html`<div class="tgt">“${m.target}”</div>` : ""}
+      <div><b>Problem:</b> ${m.problem}</div>
+      <div><b>Do this:</b> ${m.change}</div>
+      ${m.rewrite ? html`<div class="new">${withAsks(m.rewrite)}</div>` : ""}
+      <div class="eff">${m.reader_effect}</div></div></div>`);
+  const qs = v.questions.map(q => html`<div class="issue"><mark class="ask">${q.placeholder}</mark><div class="w">${q.question}</div></div>`);
+  const keep = (jd.keep || []).map(k => html`<div class="issue good"><blockquote>${k.quote}</blockquote><div class="w">${k.why}</div></div>`);
+  return html`<h2>How to make it a lot better</h2>
+    ${banner}
+    <div class="cols">
+      <div>
+        <div class="panel"><h3>What it's really about</h3><p>${d.core}</p><p><b>Holding it back:</b> ${d.holding_back}</p>
+          ${d.best_material ? html`<blockquote class="bm">${d.best_material}</blockquote><div class="caption">your best material</div>` : ""}</div>
+        <div class="panel"><h3>Your voice</h3><p>${vc.sounds_like}</p>
+          ${vc.best_lines.map(q => html`<div class="issue good"><blockquote>${q}</blockquote></div>`)}
+          ${vc.off_voice.length ? html`<p class="caption">Lines that don't sound like you</p>${vc.off_voice.map(o => html`<div class="issue"><blockquote>${o.quote}</blockquote><div class="w">${o.why}</div></div>`)}` : ""}</div>
+      </div>
+      <div class="panel"><h3><span>The moves</span><span>biggest first</span></h3>${moves.length ? moves : html`<p class="empty">No moves.</p>`}</div>
+    </div>
+    ${qs.length ? html`<div class="panel"><h3><span>Questions only you can answer</span><span>answer from memory, or cut the line</span></h3>${qs}</div>` : ""}
+    <div class="panel"><h3><span>Revised draft</span><span>${v.checks.word_count}${v.meta.word_limit ? " / " + v.meta.word_limit : ""} words · kept ${Math.round(v.diff.kept_share * 100)}% of yours</span></h3>
+      <div class="toolbar"><button class="btn-link on" data-view="changes">Show changes</button><button class="btn-link" data-view="clean">Clean draft</button>
+        <button class="btn-link" id="copyDraft">Copy draft</button><button class="btn-link" id="editDraft">Edit this draft</button></div>
+      <div class="draft" id="draftView">${diffHtml(v.diff)}</div>
+      ${keep.length ? html`<p class="caption">What the judge thought your original did better</p>${keep}` : ""}
+    </div>`;
+}
+
+async function startRevision() {
+  const r = current;
+  const body = r.id ? { review_id: r.id } : { essay: r.essay, ...r.meta };
+  mount($("#betterBody"), html`<ol class="ministeps"><li class="wait">Starting the reviser</li></ol>`);
+  try {
+    const job = await startJob("/api/revise", body);
+    const v = await pollJob(job, j => mount($("#betterBody"), html`<ol class="ministeps">${j.progress.map(p => html`<li>${p}</li>`)}${j.status === "running" ? html`<li class="wait">Working</li>` : ""}</ol>`));
+    r.revision = v;
+    if (current === r) mount($("#better"), revisionHtml(v));
+  } catch (e) {
+    if (current === r) mount($("#better"), betterIntro(String(e)));
+  }
+}
+
 function tierLabel(t) { return t === "exemplar" ? "published by admissions office" : t === "admitted" ? "admitted student" : t; }
 
 function render(r) {
   show("report");
+  current = r;
   const h2h = r.head_to_head || [];
   const cal = r.calibration || [];
   const tally = xs => { const t = { win: 0, loss: 0, split: 0 }; xs.forEach(x => t[x.verdict]++); return `won ${t.win}, lost ${t.loss}, split ${t.split}` + (t.split ? "; splits carry no weight" : ""); };
@@ -428,6 +534,7 @@ function render(r) {
       </div>
     </div>
     ${ai ? html`<div class="ai-flag"><b>AI / over-editing flag (${ai.level}):</b> ${ai.evidence}</div>` : ""}
+    <section class="better" id="better">${r.revision ? revisionHtml(r.revision) : betterIntro()}</section>
     <div class="cols">
       <div>
         <div class="panel"><h3><span>Scores</span><span>tap a row for reasons</span></h3>${cats}
@@ -450,7 +557,7 @@ function render(r) {
     ${moreSimilar.length ? html`<div class="panel"><h3>More similar essays worth reading</h3>${moreSimilar}</div>` : ""}
     <div class="panel"><h3><span>Mechanical checks</span><span>${lt.word_count}${lt.word_limit ? " / " + lt.word_limit : ""} words · grade ${lt.reading_grade}</span></h3>${lintHtml}
       ${dropped ? html`<p class="empty">${dropped} reviewer claim(s) were dropped because their quotes did not appear in your essay.</p>` : ""}</div>
-    <div class="again"><button class="go inline" id="reviseBtn">Revise and re-score</button></div>`);
+    <div class="again"><button class="go inline" id="reviseBtn">Edit and re-score</button></div>`);
   window.scrollTo({ top: 0 });
 }
 
@@ -460,6 +567,25 @@ document.addEventListener("click", e => {
   const mark = e.target.closest(".ed"); if (mark) activate(mark.dataset.i, "card");
   const card = e.target.closest(".edit"); if (card) activate(card.dataset.i, "essay");
   if (e.target.closest("#reviseBtn")) show("compose");
+  if (e.target.closest("#betterBtn")) startRevision();
+  const view = e.target.closest("[data-view]");
+  if (view && current && current.revision) {
+    const v = current.revision;
+    mount($("#draftView"), view.dataset.view === "clean" ? html`${withAsks(v.draft)}` : html`${diffHtml(v.diff)}`);
+    view.parentElement.querySelectorAll("[data-view]").forEach(b => b.classList.toggle("on", b === view));
+  }
+  const copy = e.target.closest("#copyDraft");
+  if (copy && current && current.revision) {
+    navigator.clipboard.writeText(current.revision.draft).then(() => { copy.textContent = "Copied"; },
+      () => { copy.textContent = "Copy failed; use Clean draft and select the text"; });
+  }
+  if (e.target.closest("#editDraft") && current && current.revision) {
+    $("#essay").value = current.revision.draft;
+    try { localStorage.setItem("ga-draft", current.revision.draft); } catch (err) {}
+    updateCount();
+    show("compose");
+    window.scrollTo({ top: 0 });
+  }
   const row = e.target.closest("#history .row");
   if (row) {
     $("#history").style.display = "none";
