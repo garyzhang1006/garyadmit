@@ -103,7 +103,11 @@ class FakeLLM:
         self.drafts = [REVISED]
         self.revise_prompts = []
         self.invented = []
-        self.judge_mode = "revised"  # "revised", "original", or "position" (always picks draft 1)
+        self.assumptions = []
+        self.already_strong = False
+        self.fail_polish = False
+        # "revised", "original", "position" (always picks draft 1), or "polish" (the polish-only rewrite beats everything)
+        self.judge_mode = "revised"
 
     def __call__(self, system, prompt, schema, model, effort):
         props = schema["properties"]
@@ -135,7 +139,7 @@ class FakeLLM:
             self.revise_prompts.append(prompt)
             draft = self.drafts[min(len(self.revise_prompts), len(self.drafts)) - 1]
             return {"diagnosis": {"core": "A grandmother who eats the broken dumplings.", "holding_back": "A generic frame.",
-                                  "best_material": "She just ate the broken ones herself", "already_strong": False},
+                                  "best_material": "She just ate the broken ones herself", "already_strong": self.already_strong},
                     "voice": {"sounds_like": "Dry and exact.", "best_lines": ["asked who had taught me to cheat", "not in the essay"],
                               "off_voice": [{"quote": "It truly shaped who I am today", "why": "stock"}]},
                     "moves": [{"title": "Cut the opener", "kind": "cut",
@@ -146,16 +150,21 @@ class FakeLLM:
                     "revised_essay": draft,
                     "questions": [{"placeholder": "[what she said about the pleats]", "question": "What did she say?"}]}
         if "invented" in props:
-            return {"invented": self.invented, "voice_drift": {"level": "low", "evidence": ""}}
+            return {"invented": self.invented, "bracket_assumptions": self.assumptions, "voice_drift": {"level": "low", "evidence": ""}}
         if "polished_essay" in props:
+            if self.fail_polish:
+                raise llm.LLMError("polish timed out")
             return {"polished_essay": self.essay.replace("very proud", "proud")}
         if "voice_winner" in props:
             d1 = prompt.split("<draft_1>")[1].split("</draft_1>")[0]
+            d2 = prompt.split("<draft_2>")[1].split("</draft_2>")[0]
             if self.judge_mode == "position":
                 w = "1"
+            elif self.judge_mode == "polish" and ("felt proud" in d1) != ("felt proud" in d2):
+                w = "1" if "felt proud" in d1 else "2"
             else:
                 revised_first = self.essay[:30] not in d1
-                w = "1" if revised_first == (self.judge_mode == "revised") else "2"
+                w = "1" if revised_first == (self.judge_mode in ("revised", "polish")) else "2"
             return {"winner": w, "confidence": "high", "category_winners": {c: w for c in rubric.CATEGORIES},
                     "voice_winner": w, "decisive_difference": f"Draft {w} starts in the kitchen.",
                     "loser_does_better": {"quote": "asked who had taught me to cheat",

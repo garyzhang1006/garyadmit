@@ -391,9 +391,9 @@ const diffHtml = d => d.segments.map(s => s.op === "equal" ? withAsks(s.text)
 
 function betterIntro(err) {
   return html`<h2>Make it a lot better</h2>
-    <p class="lede">GaryAdmit finds what your essay is really about, rebuilds it around your best material in your own voice, and asks you for the details only you know. It only calls the result better if a blind judge prefers it over your original in both orders, and it checks the draft for invented facts and AI-sounding phrases first.</p>
+    <p class="lede">GaryAdmit finds what your essay is really about, rebuilds it around your best material in your own voice, and asks you for the details only you know. It only calls the result better if a blind judge prefers it in both orders over your original and over a polish-only rewrite of it, and a separate check finds no invented facts or AI-sounding phrases. Claude runs those checks too, so read every line against what happened before you use it.</p>
     ${err ? html`<div class="err">${err}</div>` : ""}
-    <div id="betterBody"><button class="go inline" id="betterBtn">Make it a lot better</button> <span class="caption">2 to 5 minutes · 4 to 8 more model calls</span></div>`;
+    <div id="betterBody"><button class="go inline" id="betterBtn">Make it a lot better</button> <span class="caption">2 to 5 minutes · 7 to 13 more model calls</span></div>`;
 }
 
 function revisionHtml(v) {
@@ -403,6 +403,7 @@ function revisionHtml(v) {
   const nq = v.questions.length;
   const banner = v.verified
     ? html`<div class="banner ok"><b>Verified.</b> A blind judge preferred this revision over your original in both orders${won.length ? `, winning on ${won.join(", ")}` : ""}${lost.length ? ` and losing on ${lost.join(", ")}` : ""}. ${jd.decisive_difference || ""}
+        ${v.checks.vs_polish ? html`<br>It also beat a polish-only rewrite of your original in both orders, so the gain is more than smoother sentences.` : ""}
         ${jd.voice_share > 0.5 ? html`<br>It also judged that the revision sounds more like one specific real teenager.` : ""}
         ${nq ? html`<br><span class="caption">This assumes you answer the ${nq} bracketed question${nq > 1 ? "s" : ""} with true details.</span>` : ""}</div>`
     : html`<div class="banner no"><b>Not verified.</b> Treat this as a starting point, not a finished essay.<ul>${v.checks.failures.map(f => html`<li>${f}</li>`)}</ul></div>`;
@@ -420,7 +421,9 @@ function revisionHtml(v) {
     ${banner}
     <div class="cols">
       <div>
-        <div class="panel"><h3>What it's really about</h3><p>${d.core}</p><p><b>Holding it back:</b> ${d.holding_back}</p>
+        <div class="panel"><h3>What it's really about</h3>
+          ${d.already_strong ? html`<p class="caption">The reviser judged this essay already strong, so the moves are small. Take only the ones you agree with.</p>` : ""}
+          <p>${d.core}</p><p><b>Holding it back:</b> ${d.holding_back}</p>
           ${d.best_material ? html`<blockquote class="bm">${d.best_material}</blockquote><div class="caption">your best material</div>` : ""}</div>
         <div class="panel"><h3>Your voice</h3><p>${vc.sounds_like}</p>
           ${vc.best_lines.map(q => html`<div class="issue good"><blockquote>${q}</blockquote></div>`)}

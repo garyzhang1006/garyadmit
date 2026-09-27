@@ -45,6 +45,14 @@ def test_gates_ignore_phrases_the_original_had_and_text_inside_brackets():
     assert rv.gates(ORIG, draft, {"word_limit": None}) == []
 
 
+def test_gate_wants_brackets_phrased_as_questions():
+    ok = ORIG + " [What did she say about the pleats?] [describe the kitchen table] [the song on the radio?]"
+    assert rv.gates(ORIG, ok, {"word_limit": None}) == []
+    bad = ORIG + " [Grandma cried when she saw my state championship medal]"
+    fails = rv.gates(ORIG, bad, {"word_limit": None})
+    assert len(fails) == 1 and "reads as a statement" in fails[0]
+
+
 def test_diff_segments_rebuild_both_texts():
     a, b = "one two three four five", "one three four six five seven"
     d = rv.diff_segments(a, b)
@@ -84,6 +92,7 @@ def test_revise_verified_when_judge_prefers_revision_in_both_orders(fake):
     v = rv.revise(ESSAY)
     assert v["verified"] and len(v["rounds"]) == 1 and v["checks"]["failures"] == []
     assert v["checks"]["judge"]["verdict"] == "better" and v["checks"]["judge"]["voice_share"] == 1.0
+    assert v["checks"]["vs_polish"]["verdict"] == "better" and v["rounds"][0]["vs_polish"] == "better"
     assert v["voice"]["best_lines"] == ["asked who had taught me to cheat"]
     assert [m["target"] for m in v["moves"]] == ["Ever since I was little, I have had a passion for helping others.", ""]
     assert v["checks"]["unverified_quotes_dropped"] == 2
@@ -117,9 +126,56 @@ def test_failed_gate_is_fed_back_and_second_round_can_verify(fake):
 def test_invented_fact_fails_but_hallucinated_flag_is_ignored(fake):
     fake.invented = [{"text": "not in the draft at all", "why_new": "x"}]
     assert rv.revise(ESSAY)["verified"]
-    fake.invented = [{"text": "She looked at the bag", "why_new": "new event"}]
+    fake.invented = [{"text": "She looked at the bag", "why_new": "the original says this too"}]
+    assert rv.revise(ESSAY)["verified"]
+    fake.invented = [{"text": "Every Sunday my grandmother rolled dumplings", "why_new": "stand-in for a new event"}]
     v = rv.revise(ESSAY)
     assert not v["verified"] and any("adds facts" in f for f in v["checks"]["failures"])
+    assert [r["invented"] for r in v["rounds"]] == [1, 1]
+
+
+def test_revision_that_loses_to_a_polish_only_rewrite_is_not_verified(fake):
+    fake.judge_mode = "polish"
+    v = rv.revise(ESSAY)
+    assert not v["verified"] and v["checks"]["judge"]["verdict"] == "better"
+    assert v["checks"]["vs_polish"]["verdict"] == "worse"
+    assert any("polish-only rewrite" in f for f in v["checks"]["failures"])
+    assert "polish-only rewrite" in fake.revise_prompts[1]
+    assert sum("polished_essay" in c for c in fake.calls) == 1  # one polish serves both rounds
+
+
+def test_failed_polish_blocks_verification_without_crashing(fake):
+    fake.fail_polish = True
+    v = rv.revise(ESSAY, max_rounds=1)
+    assert not v["verified"] and any("polish-only rewrite could not run" in f for f in v["checks"]["failures"])
+
+
+def test_empty_second_round_never_replaces_a_usable_first_draft(fake):
+    fake.judge_mode = "position"
+    fake.drafts = [REVISED + " It was a tapestry of memories.", ""]
+    v = rv.revise(ESSAY)
+    assert not v["verified"] and "tapestry" in v["draft"]
+
+
+def test_bracket_that_asserts_or_assumes_an_event_fails(fake):
+    fake.drafts = [REVISED.replace("[what she said about the pleats]", "[Grandma cried when she saw my state championship medal]")]
+    v = rv.revise(ESSAY, max_rounds=1)
+    assert not v["verified"] and any("reads as a statement" in f for f in v["checks"]["failures"])
+    fake.drafts = [REVISED]
+    fake.assumptions = [{"bracket": "[what she said about the pleats]", "why": "the original never says she commented"},
+                        {"bracket": "[not a bracket in the draft]", "why": "x"}]
+    v = rv.revise(ESSAY, max_rounds=1)
+    fails = [f for f in v["checks"]["failures"] if "assumes something" in f]
+    assert not v["verified"] and len(fails) == 1 and "pleats" in fails[0]
+
+
+def test_strong_essay_says_so(fake, capsys, tmp_path):
+    from garyadmit import cli
+    fake.already_strong = True
+    p = tmp_path / "e.txt"
+    p.write_text(ESSAY)
+    assert cli.main(["revise", str(p), "--no-review"]) == 0
+    assert "already strong" in capsys.readouterr().out
 
 
 def test_revise_refuses_short_text(fake):
@@ -141,6 +197,18 @@ def test_cli_revise_uses_saved_review_and_prints_draft(fake, capsys, tmp_path):
     assert "VERIFIED" in out and "REVISED DRAFT" in out and "[what she said about the pleats]" in out
     assert "Cut the opener" in out
     assert "assumes you answer the 1 bracketed question with true details" in out
+
+
+def test_cli_revise_keeps_the_saved_reviews_essay_type(fake, tmp_path):
+    import json
+    from garyadmit import cli
+    from garyadmit import review as rvw
+    r = rvw.review(ESSAY, essay_type="supplement", word_limit=None, n_compare=0, n_anchor=0)
+    p = tmp_path / "e.txt"
+    p.write_text(ESSAY)
+    assert cli.main(["revise", str(p)]) == 0
+    saved = json.loads((rvw.HISTORY_DIR / f"{r['id']}.json").read_text())
+    assert saved["revision"]["meta"]["essay_type"] == "supplement"
 
 
 def test_judge_reasons_name_the_drafts_instead_of_positions(fake):
@@ -186,4 +254,42 @@ def test_revise_bench_metrics_and_verdicts():
     assert m["rev_beats_orig"] == 1.0 and m["rev_beats_orig_first_try"] == 0.5 and m["polish_beats_orig"] == 0.0
     assert m["rev_beats_polish"] == 1.0 and m["exemplar_rev_beats_orig"] == 0.0
     lines = bench.revise_verdicts(m)
-    assert any("polish" in line for line in lines) and lines[-1].startswith("PASS")
+    assert any("polish" in line for line in lines) and lines[-1].startswith("INCONCLUSIVE")
+
+
+def _low(first, final, verified, rounds, polish, vs_polish="better", first_invented=0):
+    return {"kind": "low", "first_verdict": first, "final_verdict": final, "verified": verified, "rounds": rounds,
+            "first_invented": first_invented, "polish_verdict": polish, "rev_vs_polish": vs_polish, "voice_share": 1.0,
+            "invented": 0, "new_share": 0.3, "polish_new_share": 0.1}
+
+
+def test_revise_bench_passes_only_on_clean_first_tries():
+    from garyadmit import bench
+    # Each side gets one judge draw: the revision's first draft and the polish.
+    clean = [_low("better", "better", True, 2, "split") for _ in range(4)] + [_low("split", "split", False, 2, "split")]
+    m = bench.revise_metrics(clean)
+    assert m["rev_first_try_clean"] == 0.8 and bench.revise_verdicts(m)[-1].startswith("PASS")
+    # Wins that needed the retry, graded by the judge that picked them, do not count; nor do first drafts with invented facts.
+    retried = ([_low("split", "better", True, 2, "split") for _ in range(3)] + [_low("better", "better", True, 2, "split", first_invented=1)]
+               + [_low("better", "better", True, 1, "split")])
+    m = bench.revise_metrics(retried)
+    assert m["rev_beats_orig"] == 1.0 and m["rev_first_try_clean"] == 0.2
+    assert bench.revise_verdicts(m)[-1].startswith("FAIL")
+    # Too many errors leaves too little to judge.
+    m = bench.revise_metrics(clean + [{"kind": "low", "error": "boom"}] * 3)
+    assert bench.revise_verdicts(m)[-1].startswith("INCONCLUSIVE")
+
+
+def test_revise_bench_says_when_polish_leaves_no_room():
+    from garyadmit import bench
+    rows = [_low("better", "better", True, 1, "better") for _ in range(5)] + [_low("better", "better", True, 1, "split")]
+    lines = bench.revise_verdicts(bench.revise_metrics(rows))
+    assert lines[-1].startswith("FAIL") and any("no room" in line for line in lines)
+
+
+def test_report_claims_the_polish_check_only_when_it_ran(fake):
+    from garyadmit.report import revision_to_text
+    v = rv.revise(ESSAY)
+    assert "polish-only rewrite" in revision_to_text(v)
+    old = {**v, "checks": {k: x for k, x in v["checks"].items() if k != "vs_polish"}}  # saved before the polish check existed
+    assert "polish-only rewrite" not in revision_to_text(old)

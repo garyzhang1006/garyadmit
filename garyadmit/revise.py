@@ -1,13 +1,16 @@
 """Revision plan and revised draft, checked against the original before it is called better.
 
   review notes (optional) ─┐
-  essay + mechanical checks ┴─ reviser ─ gates ─ fact check ─ blind judge, both orders
-                                  ▲                                     │
+  essay + mechanical checks ┴─ reviser ─ gates ─ fact check ─ blind judge vs original, both orders
+                                  ▲                          └ blind judge vs a polish-only rewrite, both orders
                                   └──── one retry with the failures ◄───┘
 
-A draft is "verified" only when the judge prefers it over the original in both
-orders and every gate passes. Anything else is reported as unverified, with the
-reasons, so a plausible-sounding rewrite is never passed off as an improvement.
+A draft is "verified" only when the judge prefers it, in both orders, over the
+original and over a polish-only rewrite of it by the same model, and every gate
+passes. The judge also prefers mere polish over most originals, so beating the
+original alone would not show the essay got stronger. Anything else is reported
+as unverified, with the reasons, so a plausible-sounding rewrite is never passed
+off as an improvement.
 """
 
 from __future__ import annotations
@@ -26,6 +29,10 @@ MAX_BRACKETS = 4
 BRACKET = re.compile(r"\[[^\[\]\n]{3,300}\]")
 # Mechanical rules whose matched phrases a revision may not introduce.
 PHRASE_RULES = {"cliche", "ai_tell", "thesaurus"}
+# A bracket asks; it never tells. A statement in brackets would carry an invented event past the fact check.
+QUESTION_START = re.compile(r"(what|how|why|when|where|who|whom|whose|which|whether|did|do|does|was|were|is|are|have|has|had|"
+                            r"can|could|would|will|name|describe|add|list|give|tell|say|share|write|include|fill)\b", re.I)
+POLISH_NAMES = ("the polish-only rewrite", "the revision")
 
 
 def strip_brackets(text: str) -> str:
@@ -40,6 +47,11 @@ def _phrases(text: str) -> set[str]:
 def _moral_ending(text: str) -> bool:
     paras = [p for p in re.split(r"\n\s*\n|\n(?=\s*\S)", text.strip()) if p.strip()]
     return bool(paras) and re.search(MORAL_ENDING, paras[-1], re.I) is not None
+
+
+def _asks(bracket: str) -> bool:
+    inner = bracket[1:-1].strip()
+    return inner.endswith("?") or QUESTION_START.match(inner) is not None
 
 
 def _em_rate(text: str) -> float:
@@ -72,6 +84,10 @@ def gates(original: str, revised: str, meta: dict, placeholders: bool = True) ->
         fails.append(f"The draft has {n} bracketed notes and this run allows none. Work only with what the essay says.")
     elif n > MAX_BRACKETS:
         fails.append(f"The draft has {n} bracketed questions; keep at most {MAX_BRACKETS}, the ones that matter most.")
+    told = [b for b in dict.fromkeys(BRACKET.findall(revised)) if not _asks(b)] if placeholders else []
+    if told:
+        fails.append("A bracketed note reads as a statement, not a question: " + ", ".join(f'"{b}"' for b in told)
+                     + ". Ask the student instead, without assuming anything the essay does not say.")
     return fails
 
 
@@ -183,13 +199,22 @@ def fidelity(original: str, revised: str, model: str) -> dict:
         if not loc:
             continue  # the checker quoted something the draft does not say
         if any(a <= loc[0] and loc[1] <= b for a, b in brackets):
-            continue  # a question for the student, not a claim
+            continue  # a question for the student; what it presupposes is checked below
+        if scoring.locate(original, revised[loc[0]:loc[1]]):
+            continue  # the original says it too
         invented.append({"text": revised[loc[0]:loc[1]], "why_new": item.get("why_new", "")})
-    return {"invented": invented, "voice_drift": r.get("voice_drift") or {"level": "none", "evidence": ""}}
+    in_draft = {b[1:-1].strip().lower(): b for b in BRACKET.findall(revised)}
+    assumptions = []
+    for a in r.get("bracket_assumptions", []):
+        b = in_draft.get((a.get("bracket") or "").strip().strip("[]").strip().lower())
+        if b:
+            assumptions.append({"bracket": b, "why": a.get("why", "")})
+    return {"invented": invented, "bracket_assumptions": assumptions,
+            "voice_drift": r.get("voice_drift") or {"level": "none", "evidence": ""}}
 
 
 def polish(essay: str, meta: dict, model: str) -> str:
-    """Sentence-level smoothing with no substantive change: the bench's control."""
+    """Sentence-level smoothing with no substantive change: the control a revision has to beat."""
     r = llm.ask_json(rubric.POLISH_SYSTEM, rubric.polish_prompt(essay, meta), rubric.POLISH_SCHEMA, model=model)
     return r["polished_essay"].strip()
 
@@ -224,15 +249,24 @@ def _checked_plan(original: str, raw: dict, draft: str) -> tuple[dict, dict, lis
     return diag, voice, moves, questions, dropped
 
 
-def _evaluate(original: str, raw: dict, meta: dict, model: str, placeholders: bool) -> dict:
+def _control(f) -> dict:
+    try:
+        text = f.result()
+    except llm.LLMError as err:
+        return {"error": str(err)}
+    return {"text": text} if text else {"error": "it came back empty"}
+
+
+def _evaluate(original: str, raw: dict, meta: dict, model: str, placeholders: bool, control: dict) -> dict:
     draft = unicodedata.normalize("NFC", (raw.get("revised_essay") or "").strip())
     diag, voice, moves, questions, dropped = _checked_plan(original, raw, draft)
     fails = gates(original, draft, meta, placeholders)
-    fid = jd = None
+    fid = jd = jp = None
     if draft:
-        with ThreadPoolExecutor(max_workers=2) as pool:
+        with ThreadPoolExecutor(max_workers=3) as pool:
             f_fid = pool.submit(fidelity, original, draft, model)
             f_jd = pool.submit(judge, original, draft, meta, model)
+            f_jp = pool.submit(judge, control["text"], draft, meta, model, POLISH_NAMES) if control.get("text") else None
             try:
                 fid = f_fid.result()
             except llm.LLMError as err:
@@ -241,19 +275,33 @@ def _evaluate(original: str, raw: dict, meta: dict, model: str, placeholders: bo
                 jd = f_jd.result()
             except llm.LLMError as err:
                 fails.append(f"The blind comparison could not run, so the draft cannot be verified: {err}")
+            if f_jp:
+                try:
+                    jp = f_jp.result()
+                except llm.LLMError as err:
+                    fails.append(f"The comparison with a polish-only rewrite could not run, so the draft cannot be verified: {err}")
+            else:
+                fails.append(f"The polish-only rewrite could not run, so the draft cannot be verified: {control.get('error')}")
     if fid and fid["invented"]:
         fails.append("The draft adds facts the original never states: "
                      + "; ".join(f'"{i["text"]}" ({i["why_new"]})' for i in fid["invented"])
                      + (". Remove each one or turn it into a bracketed question." if placeholders else ". Remove each one."))
+    if fid and fid["bracket_assumptions"]:
+        fails.append("A bracketed question assumes something your original never says: "
+                     + "; ".join(f'"{a["bracket"]}" ({a["why"]})' for a in fid["bracket_assumptions"]) + ". Ask without assuming it.")
     if fid and fid["voice_drift"].get("level") == "high":
         fails.append(f"The draft no longer sounds like the same writer: {fid['voice_drift'].get('evidence', '')}")
     if jd and jd["verdict"] != "better":
         how = "preferred the original in both orders" if jd["verdict"] == "worse" else "split between the two orders"
         fails.append(f"The blind judge did not prefer the revision in both orders; it {how}. Its reason: {jd['decisive_difference']}")
+    if jp and jp["verdict"] != "better":
+        how = "preferred the polish-only rewrite in both orders" if jp["verdict"] == "worse" else "split between the two orders"
+        fails.append("The revision did not beat a polish-only rewrite of the original in both orders, so its gain may be smoother "
+                     f"sentences rather than a stronger essay; the judge {how}. Its reason: {jp['decisive_difference']}")
     return {
         "draft": draft, "diagnosis": diag, "voice": voice, "moves": moves, "questions": questions, "dropped": dropped,
-        "failures": fails, "fidelity": fid, "judge": jd,
-        "verified": not fails and jd is not None and jd["verdict"] == "better",
+        "failures": fails, "fidelity": fid, "judge": jd, "vs_polish": jp,
+        "verified": not fails and jd is not None and jd["verdict"] == "better" and jp is not None and jp["verdict"] == "better",
     }
 
 
@@ -288,29 +336,40 @@ def revise(
     context = review_context(review)
 
     rounds: list[dict] = []
-    for n in range(1, max(1, max_rounds) + 1):
-        prev = rounds[-1] if rounds else None
-        say("Writing the revision plan and draft" if n == 1 else f"Round {n - 1} failed {len(prev['failures'])} check(s); revising again")
-        try:
-            raw = llm.ask_json(
-                rubric.REVISE_SYSTEM,
-                rubric.revise_prompt(essay, meta, lint_text, context, _feedback(prev) if prev else "",
-                                     prev["draft"] if prev else "", placeholders),
-                rubric.REVISE_SCHEMA, model=model,
-            )
-        except llm.LLMError as err:
-            if not rounds:
-                raise
-            say(f"The second revision failed and was skipped: {err}")
-            break
-        say("Checking the draft: invented facts, mechanical checks, and a blind comparison with the original")
-        rnd = {**_evaluate(essay, raw, meta, model, placeholders), "round": n}
-        rounds.append(rnd)
-        if rnd["verified"]:
-            break
-    # A verified round beats an unverified one; then fewer failures; then the earlier round.
-    best = max(rounds, key=lambda r: (r["verified"], -len(r["failures"]), -r["round"]))
-    say("Revision verified against your original" if best["verified"] else "Revision could not be verified; see the reasons")
+    control: dict = {}
+    # The control rewrite is written while the reviser works; one serves every round.
+    bg = ThreadPoolExecutor(max_workers=1)
+    f_pol = bg.submit(polish, essay, meta, model)
+    try:
+        for n in range(1, max(1, max_rounds) + 1):
+            prev = rounds[-1] if rounds else None
+            say("Writing the revision plan and draft" if n == 1 else f"Round {n - 1} failed {len(prev['failures'])} check(s); revising again")
+            try:
+                raw = llm.ask_json(
+                    rubric.REVISE_SYSTEM,
+                    rubric.revise_prompt(essay, meta, lint_text, context, _feedback(prev) if prev else "",
+                                         prev["draft"] if prev else "", placeholders),
+                    rubric.REVISE_SCHEMA, model=model,
+                )
+            except llm.LLMError as err:
+                if not rounds:
+                    raise
+                say(f"The second revision failed and was skipped: {err}")
+                break
+            say("Checking the draft: invented facts, mechanical checks, and blind comparisons with your original and a polish-only rewrite")
+            control = control or _control(f_pol)
+            rnd = {**_evaluate(essay, raw, meta, model, placeholders, control), "round": n}
+            rounds.append(rnd)
+            if rnd["verified"]:
+                break
+    finally:
+        bg.shutdown(wait=False)
+    # A verified round wins. Among the rest, a draft with text beats an empty one, a judged draft beats one the judge
+    # never saw, and a draft without invented facts beats one with them; then fewer failures; then the earlier round.
+    best = max(rounds, key=lambda r: (r["verified"], bool(r["draft"]), r["judge"] is not None,
+                                      not (r["fidelity"] or {}).get("invented"), -len(r["failures"]), -r["round"]))
+    say("Revision verified against your original and a polish-only rewrite" if best["verified"]
+        else "Revision could not be verified; see the reasons")
     return {
         "version": 1,
         "created": dt.datetime.now().isoformat(timespec="seconds"),
@@ -326,12 +385,15 @@ def revise(
         "checks": {
             "failures": best["failures"],
             "judge": best["judge"],
+            "vs_polish": best["vs_polish"],
             "fidelity": best["fidelity"],
             "word_count": word_count(best["draft"]),
             "unverified_quotes_dropped": best["dropped"],
         },
         "rounds": [{"round": r["round"], "verified": r["verified"], "failures": r["failures"],
-                    "verdict": (r["judge"] or {}).get("verdict")} for r in rounds],
+                    "verdict": (r["judge"] or {}).get("verdict"), "vs_polish": (r["vs_polish"] or {}).get("verdict"),
+                    "invented": len((r["fidelity"] or {}).get("invented", []))}
+                   for r in rounds],
         "used_review": bool(context),
         "usage": {k: round(llm.usage[k] - usage_before.get(k, 0), 4) for k in llm.usage},
         "models": {"reviser": model},

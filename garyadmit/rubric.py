@@ -427,7 +427,9 @@ def revise_prompt(essay: str, meta: dict, lint_summary: str, context: str = "", 
                      f"<review_notes>\n{fence(context)}\n</review_notes>")
     if placeholders:
         parts.append("When a move needs a detail only the student knows, put a question in square brackets where the detail goes, "
-                     "phrased so the student can answer from memory, e.g. [the exact words she said when she saw the bag]. "
+                     "phrased so the student can answer from memory, e.g. [What were her exact words when she saw the bag?]. "
+                     "Start each with a question word or end it with a question mark, and never state or assume anything in a "
+                     "bracket that the essay does not say. "
                      "Use at most 4, only where the detail would change how a reader sees the student, and list each one in "
                      "questions. Brackets count toward the word limit.")
     else:
@@ -444,7 +446,9 @@ def revise_prompt(essay: str, meta: dict, lint_summary: str, context: str = "", 
 
 FIDELITY_SYSTEM = """You check a revised college essay against the student's original for invented facts. The student will submit the revision as their own, so everything it says happened must come from the original.
 
-List every fact in the revised draft that the original neither states nor clearly implies: an event, action, person, place, object, quote or line of dialogue, number, feeling, or outcome. Rewording, reordering, cutting, compressing, and combining are fine. Expanding a moment with a detail the original clearly implies is fine (a kitchen, when the original mentions the kitchen table). Text inside square brackets is a question for the student, not a claim; ignore it. Copy each flagged passage exactly from the revised draft. If nothing is invented, return an empty list.
+List every fact in the revised draft that the original neither states nor clearly implies: an event, action, person, place, object, quote or line of dialogue, number, feeling, or outcome. Rewording, reordering, cutting, compressing, and combining are fine. Expanding a moment with a detail the original clearly implies is fine (a kitchen, when the original mentions the kitchen table). Text inside square brackets is a question for the student, not a claim, so never list it under invented. Copy each flagged passage exactly from the revised draft. If nothing is invented, return an empty list.
+
+Then check each bracket. List under bracket_assumptions any bracket that states something as fact, or whose question assumes an event, person, place, or feeling the original does not support (asking what she said at the hospital when the original never mentions a hospital). A bracket that asks about a detail the original leaves open is fine; do not list it.
 
 Also rate voice drift, meaning whether the revision still sounds like the same teenager: none = the same writer; low = tighter but clearly the same person; medium = noticeably more polished or formal than the student; high = sounds like a different writer, an adult editor, or AI.
 
@@ -464,6 +468,17 @@ FIDELITY_SCHEMA = {
                 "required": ["text", "why_new"],
             },
         },
+        "bracket_assumptions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "bracket": {"type": "string", "description": "The bracket exactly as it appears in the revised draft, brackets included"},
+                    "why": {"type": "string", "description": "What it states or assumes that the original does not support"},
+                },
+                "required": ["bracket", "why"],
+            },
+        },
         "voice_drift": {
             "type": "object",
             "properties": {
@@ -473,7 +488,7 @@ FIDELITY_SCHEMA = {
             "required": ["level", "evidence"],
         },
     },
-    "required": ["invented", "voice_drift"],
+    "required": ["invented", "bracket_assumptions", "voice_drift"],
 }
 
 

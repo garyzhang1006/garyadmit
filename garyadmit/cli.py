@@ -23,7 +23,8 @@ def _read(path: str) -> str:
 
 def _common(p: argparse.ArgumentParser) -> None:
     p.add_argument("--prompt", default="", help="the essay prompt you are answering")
-    p.add_argument("--type", dest="essay_type", choices=["personal", "supplement"], default="personal")
+    p.add_argument("--type", dest="essay_type", choices=["personal", "supplement"], default=None,
+                   help="personal (default) or supplement")
     p.add_argument("--limit", type=int, default=None, help="word limit (default 650 for personal statements)")
     p.add_argument("--school", default="", help="target school, for supplements")
     p.add_argument("--corpus", default=None, help="path to an essays.jsonl corpus")
@@ -34,11 +35,12 @@ def cmd_review(a) -> int:
     from .review import review
 
     text = _read(a.file)
-    limit = a.limit if a.limit is not None else (650 if a.essay_type == "personal" else None)
+    essay_type = a.essay_type or "personal"
+    limit = a.limit if a.limit is not None else (650 if essay_type == "personal" else None)
     model = "sonnet" if a.fast else a.model
     try:
         r = review(
-            text, prompt=a.prompt, essay_type=a.essay_type, word_limit=limit, school=a.school,
+            text, prompt=a.prompt, essay_type=essay_type, word_limit=limit, school=a.school,
             model=model, fast_model="sonnet", n_compare=0 if a.no_compare else max(a.compare, 0),
             n_anchor=0 if a.no_compare else min(max(a.anchors, 0), 4),
             corpus_path=a.corpus, progress=lambda s: print(f"  · {s}", file=sys.stderr, flush=True),
@@ -78,11 +80,12 @@ def cmd_revise(a) -> int:
     meta = saved["meta"] if saved else {}
     if saved:
         print(f"  · Using your saved review from {saved.get('created') or saved['id']}", file=sys.stderr)
+    essay_type = a.essay_type or meta.get("essay_type") or "personal"
     limit = a.limit if a.limit is not None else (
-        meta.get("word_limit") if saved else (650 if a.essay_type == "personal" else None))
+        meta.get("word_limit") if saved else (650 if essay_type == "personal" else None))
     try:
         v = revise(
-            text, prompt=a.prompt or meta.get("prompt", ""), essay_type=a.essay_type, word_limit=limit,
+            text, prompt=a.prompt or meta.get("prompt", ""), essay_type=essay_type, word_limit=limit,
             school=a.school or meta.get("school", ""), review=saved, model=a.model,
             progress=lambda s: print(f"  · {s}", file=sys.stderr, flush=True),
         )
@@ -106,7 +109,7 @@ def cmd_similar(a) -> int:
 
     text = _read(a.file)
     corpus = get_corpus(a.corpus)
-    meta = {"essay_type": a.essay_type, "prompt": a.prompt}
+    meta = {"essay_type": a.essay_type or "personal", "prompt": a.prompt}
     profile, sim = find_similar(text, meta, corpus, a.k, "sonnet")
     print(f"Profile: {profile['summary']}\nKeywords: {', '.join(profile['keywords'])}\n")
     for s in sim:
@@ -213,7 +216,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--workers", type=int, default=3)
     p.add_argument("--seed", default="", help="pick a different sample (confirm tuning on essays it was not tuned on)")
     p.add_argument("--revise", type=int, default=0, metavar="N",
-                   help="instead, check `garyadmit revise` on N essays against a polish-only control (about 12 calls each)")
+                   help="instead, check `garyadmit revise` on N essays against a polish-only control (12 to 18 calls each)")
     p.add_argument("--model", default=None)
     p.add_argument("--corpus", default=None)
     p.set_defaults(fn=cmd_bench)

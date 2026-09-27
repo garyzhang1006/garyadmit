@@ -237,10 +237,13 @@ def run(*, full: bool = False, n_rated: int = 8, n_pairs: int = 2, n_tier: int =
 # Does `garyadmit revise` make essays better, or does the judge just like Claude's
 # prose? Each essay gets a revision (no bracketed questions, so no new details can
 # help it) and a polish-only rewrite by the same model under the same voice rules.
-# The revision has to beat the original clearly more often than polish does, and
-# beat the polish head to head.
+# The revision's first draft has to beat the original clearly more often than the
+# polish does, and the final draft has to beat an independent polish head to head.
+# PASS counts one judge draw per side: a retry is picked by the judge that grades
+# it, and a first draft with an invented fact does not count as a win.
 
 LOW_GRADE_MAX = GRADE_LEVEL["B+"]
+MIN_SCORED = 5
 
 
 def sample_revise(corpus: Corpus, n: int = 8, seed: str = "") -> list[tuple[str, Essay]]:
@@ -259,12 +262,16 @@ def revise_metrics(rows: list[dict]) -> dict:
     ok = [r for r in rows if not r.get("error")]
     low = [r for r in ok if r["kind"] == "low"]
     ex = [r for r in ok if r["kind"] == "exemplar"]
+    # Runs saved before rows carried first_invented count their first drafts as clean.
+    clean = [{**r, "clean_first": r["first_verdict"] == "better" and not r.get("first_invented", 0)} for r in low]
     rate = lambda xs, key, val="better": round(sum(r[key] == val for r in xs) / len(xs), 3) if xs else None
     mean = lambda xs, key: round(statistics.mean(r[key] for r in xs), 3) if xs else None
     return {
-        "n": len(low), "n_exemplar": len(ex), "errors": len(rows) - len(ok),
+        "n": len(low), "n_sampled": sum(r.get("kind") == "low" for r in rows), "n_exemplar": len(ex),
+        "errors": len(rows) - len(ok),
         "rev_beats_orig": rate(low, "final_verdict"),
         "rev_beats_orig_first_try": rate(low, "first_verdict"),
+        "rev_first_try_clean": rate(clean, "clean_first", True),
         "rev_verified": rate(low, "verified", True),
         "polish_beats_orig": rate(low, "polish_verdict"),
         "rev_beats_polish": rate(low, "rev_vs_polish"),
@@ -284,7 +291,8 @@ def revise_verdicts(m: dict) -> list[str]:
     pct = lambda x: "n/a" if x is None else f"{x:.0%}"
     out = [
         f"Revisions beat the original in both orders on {pct(m['rev_beats_orig'])} of {m['n']} essays "
-        f"({pct(m['rev_beats_orig_first_try'])} on the first try); polish-only rewrites by the same model did on {pct(m['polish_beats_orig'])}.",
+        f"({pct(m['rev_beats_orig_first_try'])} on the first try, {pct(m['rev_first_try_clean'])} on a first try with no invented facts); "
+        f"polish-only rewrites by the same model did on {pct(m['polish_beats_orig'])}.",
         f"Head to head, revisions beat the polish-only rewrite in both orders on {pct(m['rev_beats_polish'])} and lost on {pct(m['polish_beats_rev'])}.",
         f"The judge said the revision sounds more like one specific teenager on {pct(m['voice_better'])}.",
         f"Final drafts with an invented fact: {pct(m['invented_rate'])}. Share of text new or moved: "
@@ -295,9 +303,16 @@ def revise_verdicts(m: dict) -> list[str]:
                    f"{pct(m['exemplar_rev_beats_orig'])} and changed {pct(m['exemplar_mean_new_share'])} of the text.")
     if m["errors"]:
         out.append(f"{m['errors']} essay(s) failed with an error and are left out.")
-    gain = (m["rev_beats_orig"] or 0) - (m["polish_beats_orig"] or 0)
+    if (m["polish_beats_orig"] or 0) > 0.75:
+        out.append(f"Polish alone beat the original on {pct(m['polish_beats_orig'])}, which leaves no room for the 25-point gain "
+                   "this check asks for; on this sample the head-to-head line is the informative one.")
+    if m["n"] < MIN_SCORED or m["n"] < 0.75 * m.get("n_sampled", m["n"]):
+        out.append(f"INCONCLUSIVE: only {m['n']} of {m.get('n_sampled', m['n'])} weak or low-graded essays were scored; "
+                   f"a verdict needs at least {MIN_SCORED} and three quarters of the sample.")
+        return out
+    gain = (m["rev_first_try_clean"] or 0) - (m["polish_beats_orig"] or 0)
     passed = gain >= 0.25 and (m["rev_beats_polish"] or 0) > (m["polish_beats_rev"] or 0)
-    out.append(("PASS: " if passed else "FAIL: ") + f"revisions beat the original {gain:+.0%} more often than polish alone"
+    out.append(("PASS: " if passed else "FAIL: ") + f"first drafts beat the original {gain:+.0%} more often than polish alone did"
                + (" and beat polish head to head." if passed else ", which is not enough to say the gain is more than polish."))
     return out
 
@@ -320,7 +335,8 @@ def run_revise(*, n: int = 8, seed: str = "", model: str | None = None, corpus_p
             j_pol = judge(e.text, pol, meta, m_, names=("the original", "the polished draft"))
             j_rp = judge(pol, v["draft"], meta, m_, names=("the polished draft", "the revision"))
             jd, fid = v["checks"]["judge"] or {}, v["checks"]["fidelity"] or {}
-            row = {**base, "first_verdict": v["rounds"][0]["verdict"], "final_verdict": jd.get("verdict"),
+            row = {**base, "first_verdict": v["rounds"][0]["verdict"], "first_invented": v["rounds"][0]["invented"],
+                   "first_failures": v["rounds"][0]["failures"], "final_verdict": jd.get("verdict"),
                    "verified": v["verified"], "rounds": len(v["rounds"]), "failures": v["checks"]["failures"],
                    "polish_verdict": j_pol["verdict"], "rev_vs_polish": j_rp["verdict"],
                    "voice_share": jd.get("voice_share", 0.0), "voice_vs_polish": j_rp["voice_share"],

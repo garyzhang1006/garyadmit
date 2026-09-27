@@ -52,15 +52,18 @@ garyadmit bench --revise 8           # check revisions against the originals and
 
 After a review, press **Make it a lot better** (or run `garyadmit revise`). It works in order of impact: what the essay is really about, what is holding it back, which material is strongest, then cuts, scenes, reflection and the ending. Voice and word choice come last. You get the diagnosis, a description of your voice with the lines that already sound like you, the moves ranked biggest first with what each one changes for a reader, and a revised draft shown as changes against your original.
 
-The draft never invents facts about your life. Where it needs a detail only you know, it asks in square brackets, such as `[What you said back to her, word for word]`, at most four times.
+The reviser is told never to invent facts about your life. Where it needs a detail only you know, it asks in square brackets, such as `[What did you say back to her?]`, at most four times.
 
 It only calls a draft better after these checks pass:
 
 - A blind judge compares the draft with your original in both orders, and the draft has to win both times. The judge is told not to reward polish, and it reports which categories each draft won and anything your original did better.
-- A separate check lists any facts the draft added that your original does not support, and rates how far the voice drifted. An invented fact or high drift fails the draft.
-- Mechanical gates reject drafts that go over the word limit, add clichés, AI-tell or thesaurus phrases your original did not have, add a moral at the end, or use em dashes more often than you do (past one per 100 words).
+- The same judge compares the draft with a polish-only rewrite of your original, also in both orders, and the draft has to win both times again. In testing the judge preferred a mere polish over most originals, so beating your original alone would not show the essay got stronger.
+- A separate check lists facts the draft added that your original does not support, and brackets that state or assume something it never says, and rates how far the voice drifted. Any of those, or high drift, fails the draft.
+- Mechanical gates reject drafts that go over the word limit, add clichés, AI-tell or thesaurus phrases your original did not have, add a moral at the end, use em dashes more often than you do (past one per 100 words), or put a statement in brackets where a question belongs.
 
-A draft that fails gets one more round with the failures spelled out. If it still fails, you see it marked NOT VERIFIED, with the reasons. A revision takes two to five minutes and four to eight model calls.
+Claude runs every one of these checks, so they catch a lot and miss some. Read the draft line by line against what happened before you use any of it.
+
+A draft that fails gets one more round with the failures spelled out. If it still fails, you see it marked NOT VERIFIED, with the reasons. A revision takes two to five minutes and seven to thirteen model calls. Benchmark results, including where the check failed, are in `docs/revise-bench.md`.
 
 ## Why the score is hard to inflate
 

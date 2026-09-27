@@ -141,6 +141,9 @@ def revision_to_text(v: dict) -> str:
         line = "A blind judge preferred the revised draft over your original in both orders"
         line += f", winning on {', '.join(won)}" if won else ""
         line += f" and losing on {', '.join(lost)}" if lost else ""
+        if checks.get("vs_polish"):  # revisions saved before this check existed do not have it
+            line += (". It also preferred it in both orders over a polish-only rewrite of your original, so the gain is more "
+                     "than smoother sentences")
         out.append(_wrap(f"{line}. {jd.get('decisive_difference', '')}", "  "))
         if jd.get("voice_share", 0) > 0.5:
             out.append(_wrap("The judge also said it sounds more like one specific real teenager than your original does.", "  "))
@@ -155,6 +158,8 @@ def revision_to_text(v: dict) -> str:
 
     d = v["diagnosis"]
     out.append("WHAT THE ESSAY IS REALLY ABOUT")
+    if d.get("already_strong"):
+        out.append(_wrap("The reviser judged this essay already strong, so the moves are small. Take only the ones you agree with."))
     out.append(_wrap(d.get("core", "")))
     out.append(_wrap(f"Holding it back: {d.get('holding_back', '')}"))
     if d.get("best_material"):
