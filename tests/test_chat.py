@@ -58,6 +58,7 @@ def test_change_the_judge_scores_lower_is_retried_and_reported(fake):
     assert any("preferred the whole essay before this change" in f for f in fails)
     assert "<previous_attempt>" in fake.chat_prompts[1] and "did not score" in fake.chat_prompts[1]
     assert "<previous_attempt>" not in fake.chat_prompts[0]
+    assert "only real gain would come from a detail" in rubric.CHAT_SYSTEM
 
 
 def test_position_biased_rating_is_not_an_improvement(fake):
