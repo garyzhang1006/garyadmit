@@ -134,6 +134,13 @@ def test_voice_drift_the_working_draft_already_had_is_noted_not_blamed(fake):
     assert not t["passed"] and len(fake.fidelity_prompts) == 1
 
 
+def test_a_named_score_holds_the_edit_to_a_real_gain_even_without_an_aspect(fake):
+    fake.chat_aspect, fake.chat_category, fake.chat_target = "", "", 10
+    fake.aspect_mode = "tie"
+    t = ch.chat(ESSAY, ESSAY, HOOK, max_rounds=1)
+    assert not t["passed"] and any("did not score the essay as a whole higher" in f for f in t["checks"]["failures"])
+
+
 def test_a_phrase_or_dash_the_student_asked_for_does_not_fail_the_edit(fake):
     fake.chat_drafts = [CHAT_DRAFT.replace("She never corrected me.", "She never corrected me — not once.")]
     t = ch.chat(ESSAY, ESSAY, "Open on the exploding dumpling, and add an em dash before 'not once'", max_rounds=1)

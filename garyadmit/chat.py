@@ -76,8 +76,10 @@ def _evaluate(original: str, facts: str, allow: str, base: str, raw: dict, meta:
     draft = _norm(raw.get("revised_essay") if raw.get("edit") else "")
     # Every edit is rated, so the editor cannot skip the judge by leaving the aspect empty; only a
     # requested quality gain has to score higher, while a fact or mechanical change only must not score lower.
+    # A score the student named ("a 10/10 hook") makes it a quality request even when the aspect comes back empty.
     asked = (raw.get("aspect") or "").strip()
     aspect = asked or WHOLE
+    strict = bool(asked) or _target(raw.get("target")) > 0
     category = raw.get("category") if asked and raw.get("category") in rubric.CATEGORIES else ""
     fails = gates(original, draft, meta, base=base, allow=allow)
     fid = rating = None
@@ -112,8 +114,8 @@ def _evaluate(original: str, facts: str, allow: str, base: str, raw: dict, meta:
             inherited_voice = prior.get("evidence") or fid["voice_drift"].get("evidence", "")
         else:
             fails.append(f"The new version no longer sounds like the same writer: {fid['voice_drift'].get('evidence', '')}")
-    if rating and (rating["after"] < rating["before"] or (asked and rating["after"] == rating["before"])):
-        fails.append(f"The blind judge did not score {aspect} {'higher' if asked else 'as high'} after this change "
+    if rating and (rating["after"] < rating["before"] or (strict and rating["after"] == rating["before"])):
+        fails.append(f"The blind judge did not score {aspect} {'higher' if strict else 'as high'} after this change "
                      f"({_num(rating['before'])} → {_num(rating['after'])}). Its reason: {rating['why_after']}")
     if rating and rating["overall"] == "worse":
         fails.append(f"The blind judge preferred the whole essay before this change, in both orders. Its reason: {rating['reason']}")
