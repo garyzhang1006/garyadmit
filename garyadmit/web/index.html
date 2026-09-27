@@ -484,7 +484,7 @@ async function startRevision() {
     const v = await pollJob(job, j => mount($("#betterBody"), html`<ol class="ministeps">${j.progress.map(p => html`<li>${p}</li>`)}${j.status === "running" ? html`<li class="wait">Working</li>` : ""}</ol>`));
     r.revision = v;
     if (current === r) mount($("#better"), revisionHtml(v));
-    if (current === r && !(r.chat || []).length) { versions = [v.draft]; showWorking(); }
+    if (current === r && !(r.chat || []).some(applied)) { versions = [v.draft]; showWorking(); }
   } catch (e) {
     if (current === r) mount($("#better"), betterIntro(String(e)));
   }
@@ -578,7 +578,11 @@ function showWorking(turnIndex) {
 
 function initChat(r) {
   // Start from the edited essay when there is one, with every saved change on top of it.
-  versions = [(r.revision && r.revision.draft) || r.essay, ...(r.chat || []).filter(applied).map(t => t.draft)];
+  versions = [(r.revision && r.revision.draft) || r.essay];
+  for (const t of r.chat || []) {
+    if (t.edited && t.base !== working()) versions.push(t.base);
+    if (applied(t)) versions.push(t.draft);
+  }
   showWorking();
 }
 
