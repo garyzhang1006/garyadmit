@@ -1,3 +1,9 @@
+import json
+import threading
+import time
+import urllib.error
+import urllib.request
+
 import pytest
 
 from garyadmit import chat as ch
@@ -112,3 +118,40 @@ def test_chat_refuses_empty_requests_and_short_essays(fake):
         ch.chat(ESSAY, ESSAY, "   ")
     with pytest.raises(ValueError):
         ch.chat("Too short to edit.", "Too short to edit.", HOOK)
+
+
+def test_server_chat_job_writes_the_turn_back_and_refuses_cross_site(fake):
+    from garyadmit.server import ThreadingHTTPServer, make_handler
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(None))
+    base = f"http://127.0.0.1:{httpd.server_address[1]}"
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+
+    def post(path, body, headers=None):
+        req = urllib.request.Request(base + path, data=json.dumps(body).encode(),
+                                     headers={"Content-Type": "application/json", **(headers or {})}, method="POST")
+        return json.loads(urllib.request.urlopen(req).read())["job"]
+
+    def wait(job):
+        for _ in range(200):
+            j = json.loads(urllib.request.urlopen(f"{base}/api/job/{job}").read())
+            if j["status"] != "running":
+                return j
+            time.sleep(0.05)
+        raise AssertionError("job never finished")
+
+    try:
+        r = wait(post("/api/review", {"essay": ESSAY, "compare": 0, "anchors": 0}))["result"]
+        c = wait(post("/api/chat", {"review_id": r["id"], "message": HOOK, "draft": ESSAY, "history": []}))
+        assert c["status"] == "done", c.get("error")
+        assert c["result"]["edited"] and c["result"]["rating"]["after"] == 8
+        saved = json.loads(urllib.request.urlopen(f"{base}/api/history/{r['id']}").read())
+        assert [t["draft"] for t in saved["chat"]] == [c["result"]["draft"]]
+        plain = wait(post("/api/chat", {"essay": ESSAY, "message": HOOK, "history": "not a list"}))
+        assert plain["status"] == "done" and plain["result"]["base"] == ESSAY.strip()
+        missing = wait(post("/api/chat", {"review_id": "20000101-000000", "message": HOOK}))
+        assert missing["status"] == "error" and "not found" in missing["error"]
+        with pytest.raises(urllib.error.HTTPError) as err:
+            post("/api/chat", {"essay": ESSAY, "message": HOOK}, {"Origin": "http://evil.example"})
+        assert err.value.code == 403
+    finally:
+        httpd.shutdown()

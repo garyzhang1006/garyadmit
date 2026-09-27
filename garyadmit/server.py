@@ -13,6 +13,7 @@ from pathlib import Path
 from . import llm
 from . import review as review_mod
 from .review import get_corpus, review
+from .chat import chat
 from .revise import revise
 
 WEB = Path(__file__).resolve().parent / "web"
@@ -71,13 +72,35 @@ def _do_revise(req: dict, progress) -> dict:
     return result
 
 
+def _do_chat(req: dict, progress) -> dict:
+    rid = str(req.get("review_id") or "")
+    saved, path = None, None
+    if rid:
+        path = _history_file(rid)
+        if not path:
+            raise ValueError("That saved review was not found. Run the review again, then ask for changes.")
+        saved = json.loads(path.read_text())
+    meta = saved["meta"] if saved else _meta_from(req)
+    original = saved["essay"] if saved else str(req.get("essay") or "")
+    history = req.get("history") if isinstance(req.get("history"), list) else []
+    result = chat(original, str(req.get("draft") or original), str(req.get("message") or ""),
+                  history=history, meta=meta, review=saved, progress=progress)
+    if path:
+        with _lock:  # the same lock as revision write-backs, so the two never interleave
+            current = json.loads(path.read_text())
+            current.setdefault("chat", []).append(result)
+            path.write_text(json.dumps(current, indent=1))
+    return result
+
+
 def _run_job(job_id: str, kind: str, req: dict, corpus_path: str | None) -> None:
     def progress(msg: str) -> None:
         with _lock:
             _jobs[job_id]["progress"].append(msg)
 
     try:
-        result = _do_revise(req, progress) if kind == "revise" else _do_review(req, corpus_path, progress)
+        result = (_do_revise(req, progress) if kind == "revise" else _do_chat(req, progress) if kind == "chat"
+                  else _do_review(req, corpus_path, progress))
         with _lock:
             _jobs[job_id].update(status="done", result=result)
     except (llm.LLMError, ValueError) as err:
@@ -151,7 +174,7 @@ def make_handler(corpus_path: str | None):
         def do_POST(self):
             if not self._addressed_locally():
                 return self._json(403, {"error": "forbidden host"})
-            kind = {"/api/review": "review", "/api/revise": "revise"}.get(self.path)
+            kind = {"/api/review": "review", "/api/revise": "revise", "/api/chat": "chat"}.get(self.path)
             if not kind:
                 return self._json(404, {"error": "not found"})
             # Requiring JSON forces a CORS preflight for cross-site pages, which this server
