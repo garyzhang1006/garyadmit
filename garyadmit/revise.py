@@ -106,7 +106,11 @@ def diff_segments(a: str, b: str) -> dict:
             segs.append({"op": "equal", "text": "".join(tb[j1:j2])})
             continue
         if i2 > i1:
-            segs.append({"op": "delete", "text": "".join(ta[i1:i2])})
+            text = "".join(ta[i1:i2])
+            # Only b's last word lacks trailing space; a cut after it would render glued to it.
+            if i1 and segs and not segs[-1]["text"][-1:].isspace():
+                text = ta[i1 - 1][len(ta[i1 - 1].rstrip()):] + text
+            segs.append({"op": "delete", "text": text})
         if j2 > j1:
             segs.append({"op": "insert", "text": "".join(tb[j1:j2])})
     kept = sum(m.size for m in sm.get_matching_blocks())
