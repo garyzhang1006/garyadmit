@@ -300,7 +300,14 @@ def review(
     }
     if save:
         HISTORY_DIR.mkdir(parents=True, exist_ok=True)
-        stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+        stamp = base = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+        n = 1
+        # Two reviews finishing in the same second must not overwrite each other,
+        # because revisions are saved back into their review's file by this id.
+        while (HISTORY_DIR / f"{stamp}.json").exists():
+            n += 1
+            stamp = f"{base}-{n}"
+        result["id"] = stamp
         (HISTORY_DIR / f"{stamp}.json").write_text(json.dumps(result, indent=1))
     return result
 

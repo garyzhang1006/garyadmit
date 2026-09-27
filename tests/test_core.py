@@ -252,6 +252,43 @@ def test_server_runs_a_job(fake):
         httpd.shutdown()
 
 
+def test_server_revise_job_writes_back_and_refuses_cross_site(fake):
+    from garyadmit.server import ThreadingHTTPServer, make_handler
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(None))
+    base = f"http://127.0.0.1:{httpd.server_address[1]}"
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+
+    def post(path, body, headers=None):
+        req = urllib.request.Request(base + path, data=json.dumps(body).encode(),
+                                     headers={"Content-Type": "application/json", **(headers or {})}, method="POST")
+        return json.loads(urllib.request.urlopen(req).read())["job"]
+
+    def wait(job):
+        for _ in range(200):
+            j = json.loads(urllib.request.urlopen(f"{base}/api/job/{job}").read())
+            if j["status"] != "running":
+                return j
+            time.sleep(0.05)
+        raise AssertionError("job never finished")
+
+    try:
+        r = wait(post("/api/review", {"essay": ESSAY, "compare": 0, "anchors": 0}))["result"]
+        v = wait(post("/api/revise", {"review_id": r["id"]}))
+        assert v["status"] == "done", v.get("error")
+        assert v["result"]["used_review"] and v["result"]["verified"]
+        saved = json.loads(urllib.request.urlopen(f"{base}/api/history/{r['id']}").read())
+        assert saved["revision"]["draft"] == v["result"]["draft"] and saved["id"] == r["id"]
+        plain = wait(post("/api/revise", {"essay": ESSAY, "word_limit": "650"}))
+        assert plain["status"] == "done" and not plain["result"]["used_review"]
+        missing = wait(post("/api/revise", {"review_id": "20000101-000000"}))
+        assert missing["status"] == "error" and "not found" in missing["error"]
+        with pytest.raises(urllib.error.HTTPError) as err:
+            post("/api/revise", {"essay": ESSAY}, {"Origin": "http://evil.example"})
+        assert err.value.code == 403
+    finally:
+        httpd.shutdown()
+
+
 def test_spearman_and_bench_metrics():
     from garyadmit.bench import metrics, spearman
     assert spearman([1, 2, 3, 4], [10, 20, 30, 40]) == pytest.approx(1.0)

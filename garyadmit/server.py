@@ -11,7 +11,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import llm
-from .review import HISTORY_DIR, get_corpus, review
+from . import review as review_mod
+from .review import get_corpus, review
+from .revise import revise
 
 WEB = Path(__file__).resolve().parent / "web"
 MAX_BODY = 200_000
@@ -21,27 +23,61 @@ _jobs: dict[str, dict] = {}
 _lock = threading.Lock()
 
 
-def _run_job(job_id: str, req: dict, corpus_path: str | None) -> None:
+def _history_file(name: str) -> Path | None:
+    # Read the module attribute at call time so tests can point history elsewhere.
+    f = review_mod.HISTORY_DIR / f"{name}.json"
+    return f if name.replace("-", "").isdigit() and f.exists() else None
+
+
+def _meta_from(req: dict) -> dict:
+    essay_type = req.get("essay_type") or "personal"
+    raw_limit = str(req.get("word_limit") or "").strip()
+    limit = int(raw_limit) if raw_limit.isdigit() else (650 if essay_type == "personal" else None)
+    return {"prompt": req.get("prompt", ""), "essay_type": essay_type, "word_limit": limit, "school": req.get("school", "")}
+
+
+def _do_review(req: dict, corpus_path: str | None, progress) -> dict:
+    return review(
+        req.get("essay", ""),
+        **_meta_from(req),
+        model="sonnet" if req.get("fast") else None,
+        n_compare=min(max(int(req.get("compare", 3)), 0), 5),
+        n_anchor=min(max(int(req.get("anchors", 4)), 0), 4),
+        corpus_path=corpus_path,
+        progress=progress,
+    )
+
+
+def _do_revise(req: dict, progress) -> dict:
+    rid = str(req.get("review_id") or "")
+    saved, path = None, None
+    if rid:
+        path = _history_file(rid)
+        if not path:
+            raise ValueError("That saved review was not found. Run the review again, then ask for a revision.")
+        saved = json.loads(path.read_text())
+    meta = saved["meta"] if saved else _meta_from(req)
+    result = revise(
+        saved["essay"] if saved else req.get("essay", ""),
+        prompt=meta.get("prompt", ""), essay_type=meta.get("essay_type", "personal"),
+        word_limit=meta.get("word_limit"), school=meta.get("school", ""),
+        review=saved, model="sonnet" if req.get("fast") else None, progress=progress,
+    )
+    if path:
+        with _lock:  # two revisions of one review finishing together must not interleave writes
+            current = json.loads(path.read_text())
+            current["revision"] = result
+            path.write_text(json.dumps(current, indent=1))
+    return result
+
+
+def _run_job(job_id: str, kind: str, req: dict, corpus_path: str | None) -> None:
     def progress(msg: str) -> None:
         with _lock:
             _jobs[job_id]["progress"].append(msg)
 
     try:
-        essay_type = req.get("essay_type") or "personal"
-        raw_limit = str(req.get("word_limit") or "").strip()
-        limit = int(raw_limit) if raw_limit.isdigit() else (650 if essay_type == "personal" else None)
-        result = review(
-            req.get("essay", ""),
-            prompt=req.get("prompt", ""),
-            essay_type=essay_type,
-            word_limit=limit,
-            school=req.get("school", ""),
-            model="sonnet" if req.get("fast") else None,
-            n_compare=min(max(int(req.get("compare", 3)), 0), 5),
-            n_anchor=min(max(int(req.get("anchors", 4)), 0), 4),
-            corpus_path=corpus_path,
-            progress=progress,
-        )
+        result = _do_revise(req, progress) if kind == "revise" else _do_review(req, corpus_path, progress)
         with _lock:
             _jobs[job_id].update(status="done", result=result)
     except (llm.LLMError, ValueError) as err:
@@ -88,7 +124,7 @@ def make_handler(corpus_path: str | None):
                 return self._json(200, snap) if snap else self._json(404, {"error": "unknown job"})
             if path == "/api/history":
                 items = []
-                for f in sorted(HISTORY_DIR.glob("*.json"), reverse=True)[:50]:
+                for f in sorted(review_mod.HISTORY_DIR.glob("*.json"), reverse=True)[:50]:
                     try:
                         r = json.loads(f.read_text())
                     except (OSError, json.JSONDecodeError):
@@ -98,10 +134,12 @@ def make_handler(corpus_path: str | None):
                 return self._json(200, items)
             if path.startswith("/api/history/"):
                 name = path.rsplit("/", 1)[-1]
-                f = HISTORY_DIR / f"{name}.json"
-                if not name.replace("-", "").isdigit() or not f.exists():
+                f = _history_file(name)
+                if not f:
                     return self._json(404, {"error": "not found"})
-                return self._send(200, f.read_bytes())
+                saved = json.loads(f.read_text())
+                saved.setdefault("id", name)  # reviews saved before ids existed
+                return self._json(200, saved)
             if path == "/api/status":
                 try:
                     n = len(get_corpus(corpus_path))
@@ -113,7 +151,8 @@ def make_handler(corpus_path: str | None):
         def do_POST(self):
             if not self._addressed_locally():
                 return self._json(403, {"error": "forbidden host"})
-            if self.path != "/api/review":
+            kind = {"/api/review": "review", "/api/revise": "revise"}.get(self.path)
+            if not kind:
                 return self._json(404, {"error": "not found"})
             # Requiring JSON forces a CORS preflight for cross-site pages, which this server
             # never approves, and the Origin check covers browsers that send one anyway.
@@ -140,7 +179,7 @@ def make_handler(corpus_path: str | None):
                 for k in finished[:-KEEP_JOBS]:
                     del _jobs[k]
                 _jobs[job_id] = {"status": "running", "progress": [], "result": None, "error": None}
-            threading.Thread(target=_run_job, args=(job_id, req, corpus_path), daemon=True).start()
+            threading.Thread(target=_run_job, args=(job_id, kind, req, corpus_path), daemon=True).start()
             return self._json(202, {"job": job_id})
 
     return Handler
