@@ -85,6 +85,14 @@ def test_bm25_ranks_topical_essay_first_and_excludes_self():
     assert all(e.id != "a" for e, _ in c.search(c.essays[0].text, k=3, exclude_text=c.essays[0].text))
 
 
+# ESSAY with the stock opener and moral cut, and one question only the writer can answer.
+REVISED = """Every Sunday my grandmother rolled dumplings at the kitchen table while the radio played Cantonese opera too loud for anyone but her. I was in charge of the pleats, and I was bad at it. My dumplings leaked, split, and once exploded in the pot.
+
+She never corrected me. She just ate the broken ones herself and served the good ones to guests. [what she said about the pleats]
+
+Last spring she moved into a care home in Flushing. The first time I visited, I brought frozen dumplings from the supermarket. She looked at the bag, laughed, and asked who had taught me to cheat."""
+
+
 class FakeLLM:
     """Answers by schema so the whole pipeline runs without a model."""
 
@@ -92,6 +100,10 @@ class FakeLLM:
         self.essay = essay
         self.prefer_opponent = prefer_opponent
         self.calls = []
+        self.drafts = [REVISED]
+        self.revise_prompts = []
+        self.invented = []
+        self.judge_mode = "revised"  # "revised", "original", or "position" (always picks draft 1)
 
     def __call__(self, system, prompt, schema, model, effort):
         props = schema["properties"]
@@ -119,6 +131,34 @@ class FakeLLM:
             return {"summary": "grandmother dumplings", "topic": "family cooking", "themes": ["family"], "structure": "narrative", "keywords": ["dumplings", "grandmother", "kitchen"]}
         if "matches" in props:
             return {"matches": [{"id": "a", "why_similar": "grandmother cooking"}, {"id": "zzz", "why_similar": "bad id"}]}
+        if "revised_essay" in props:
+            self.revise_prompts.append(prompt)
+            draft = self.drafts[min(len(self.revise_prompts), len(self.drafts)) - 1]
+            return {"diagnosis": {"core": "A grandmother who eats the broken dumplings.", "holding_back": "A generic frame.",
+                                  "best_material": "She just ate the broken ones herself", "already_strong": False},
+                    "voice": {"sounds_like": "Dry and exact.", "best_lines": ["asked who had taught me to cheat", "not in the essay"],
+                              "off_voice": [{"quote": "It truly shaped who I am today", "why": "stock"}]},
+                    "moves": [{"title": "Cut the opener", "kind": "cut",
+                               "target": "Ever since I was little, I have had a passion for helping others.",
+                               "problem": "stock", "change": "cut it", "rewrite": "", "reader_effect": "starts in the kitchen"},
+                              {"title": "Bad target", "kind": "ending", "target": "nowhere in the essay", "problem": "p",
+                               "change": "c", "rewrite": "r", "reader_effect": "e"}],
+                    "revised_essay": draft,
+                    "questions": [{"placeholder": "[what she said about the pleats]", "question": "What did she say?"}]}
+        if "invented" in props:
+            return {"invented": self.invented, "voice_drift": {"level": "low", "evidence": ""}}
+        if "polished_essay" in props:
+            return {"polished_essay": self.essay.replace("very proud", "proud")}
+        if "voice_winner" in props:
+            d1 = prompt.split("<draft_1>")[1].split("</draft_1>")[0]
+            if self.judge_mode == "position":
+                w = "1"
+            else:
+                revised_first = self.essay[:30] not in d1
+                w = "1" if revised_first == (self.judge_mode == "revised") else "2"
+            return {"winner": w, "confidence": "high", "category_winners": {c: w for c in rubric.CATEGORIES},
+                    "voice_winner": w, "decisive_difference": "The revised draft starts in the kitchen.",
+                    "loser_does_better": {"quote": "asked who had taught me to cheat", "why": "the funniest line"}}
         if "winner" in props:
             winner = "1"  # default: pure position bias, which must come out as a split
             if self.prefer_opponent:

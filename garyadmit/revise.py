@@ -12,10 +12,15 @@ reasons, so a plausible-sounding rewrite is never passed off as an improvement.
 
 from __future__ import annotations
 
+import datetime as dt
 import difflib
 import re
+import unicodedata
+from concurrent.futures import ThreadPoolExecutor
+from typing import Callable
 
-from .lint import MORAL_ENDING, lint, word_count
+from . import llm, rubric, scoring
+from .lint import MORAL_ENDING, lint, summarize_for_prompt, word_count
 
 MAX_BRACKETS = 4
 BRACKET = re.compile(r"\[[^\[\]\n]{3,300}\]")
@@ -119,3 +124,200 @@ def review_context(r: dict | None) -> str:
     for h in lost[:4]:
         lines.append(f"Lost a blind comparison with a published essay: {h.get('decisive_difference', '')} Lesson: {h['lesson']}")
     return "\n".join(lines)
+
+
+def judge(base: str, candidate: str, meta: dict, model: str) -> dict:
+    """Which draft makes the stronger case, judged in both orders; the candidate is
+    "better" only if it wins both, because judges favor a position."""
+    orders = []
+    for cand_first in (True, False):
+        d1, d2 = (candidate, base) if cand_first else (base, candidate)
+        r = llm.ask_json(rubric.REVISION_JUDGE_SYSTEM, rubric.revision_judge_prompt(d1, d2, meta),
+                         rubric.REVISION_JUDGE_SCHEMA, model=model)
+        label = "1" if cand_first else "2"
+        orders.append({**r, "cand_label": label, "cand_won": r["winner"] == label})
+    wins = sum(o["cand_won"] for o in orders)
+    verdict = "better" if wins == 2 else "worse" if wins == 0 else "split"
+    share = lambda w, lab: 0.5 if w == "tie" else float(w == lab)
+    # On a split, explain with the order the candidate lost: that is what needs fixing.
+    lead = next((o for o in orders if o["cand_won"] == (verdict == "better")), orders[0])
+    keep, seen = [], set()
+    for o in orders:
+        k = o.get("loser_does_better") or {}
+        q = (k.get("quote") or "").strip()
+        if o["cand_won"] and q and q not in seen and scoring.quote_ok(base, q):
+            seen.add(q)
+            keep.append({"quote": q, "why": k.get("why", "")})
+    return {
+        "verdict": verdict,
+        "confidence": [o["confidence"] for o in orders],
+        "category_share": {c: sum(share(o["category_winners"][c], o["cand_label"]) for o in orders) / len(orders)
+                           for c in rubric.CATEGORIES},
+        "voice_share": sum(share(o["voice_winner"], o["cand_label"]) for o in orders) / len(orders),
+        "decisive_difference": lead["decisive_difference"],
+        "keep": keep,
+    }
+
+
+def fidelity(original: str, revised: str, model: str) -> dict:
+    r = llm.ask_json(rubric.FIDELITY_SYSTEM, rubric.fidelity_prompt(original, revised), rubric.FIDELITY_SCHEMA, model=model)
+    brackets = [(b.start(), b.end()) for b in BRACKET.finditer(revised)]
+    invented = []
+    for item in r.get("invented", []):
+        loc = scoring.locate(revised, item.get("text", "")) if item.get("text") else None
+        if not loc:
+            continue  # the checker quoted something the draft does not say
+        if any(a <= loc[0] and loc[1] <= b for a, b in brackets):
+            continue  # a question for the student, not a claim
+        invented.append({"text": revised[loc[0]:loc[1]], "why_new": item.get("why_new", "")})
+    return {"invented": invented, "voice_drift": r.get("voice_drift") or {"level": "none", "evidence": ""}}
+
+
+def polish(essay: str, meta: dict, model: str) -> str:
+    """Sentence-level smoothing with no substantive change: the bench's control."""
+    r = llm.ask_json(rubric.POLISH_SYSTEM, rubric.polish_prompt(essay, meta), rubric.POLISH_SCHEMA, model=model)
+    return r["polished_essay"].strip()
+
+
+def _checked_plan(original: str, raw: dict, draft: str) -> tuple[dict, dict, list[dict], list[dict], int]:
+    """Drop quotes the reviser attributed to the essay that are not in it, and tie
+    questions to the brackets actually in the draft."""
+    dropped = 0
+
+    def found(q: str) -> tuple[int, int] | None:
+        nonlocal dropped
+        loc = scoring.locate(original, q) if q.strip() else None
+        if q.strip() and not loc:
+            dropped += 1
+        return loc
+
+    diag = dict(raw.get("diagnosis") or {})
+    loc = found(diag.get("best_material", ""))
+    diag["best_material"] = original[loc[0]:loc[1]] if loc else ""
+    voice = dict(raw.get("voice") or {})
+    voice["best_lines"] = [original[l[0]:l[1]] for q in voice.get("best_lines", []) if (l := found(q))]
+    voice["off_voice"] = [{**o, "quote": original[l[0]:l[1]]} for o in voice.get("off_voice", []) if (l := found(o.get("quote", "")))]
+    moves = []
+    for m in raw.get("moves", []):
+        loc = found(m.get("target", ""))
+        moves.append({**m, "target": original[loc[0]:loc[1]] if loc else ""})
+    asked = {}
+    for q in raw.get("questions", []):
+        ph = (q.get("placeholder") or "").strip()
+        asked["[" + ph.strip("[]").strip() + "]"] = q.get("question", "")
+    questions = [{"placeholder": b, "question": asked.get(b) or b[1:-1]} for b in dict.fromkeys(BRACKET.findall(draft))]
+    return diag, voice, moves, questions, dropped
+
+
+def _evaluate(original: str, raw: dict, meta: dict, model: str, placeholders: bool) -> dict:
+    draft = unicodedata.normalize("NFC", (raw.get("revised_essay") or "").strip())
+    diag, voice, moves, questions, dropped = _checked_plan(original, raw, draft)
+    fails = gates(original, draft, meta, placeholders)
+    fid = jd = None
+    if draft:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            f_fid = pool.submit(fidelity, original, draft, model)
+            f_jd = pool.submit(judge, original, draft, meta, model)
+            try:
+                fid = f_fid.result()
+            except llm.LLMError as err:
+                fails.append(f"The fact check could not run, so the draft cannot be verified: {err}")
+            try:
+                jd = f_jd.result()
+            except llm.LLMError as err:
+                fails.append(f"The blind comparison could not run, so the draft cannot be verified: {err}")
+    if fid and fid["invented"]:
+        fails.append("The draft adds facts the original never states: "
+                     + "; ".join(f'"{i["text"]}" ({i["why_new"]})' for i in fid["invented"])
+                     + (". Remove each one or turn it into a bracketed question." if placeholders else ". Remove each one."))
+    if fid and fid["voice_drift"].get("level") == "high":
+        fails.append(f"The draft no longer sounds like the same writer: {fid['voice_drift'].get('evidence', '')}")
+    if jd and jd["verdict"] != "better":
+        how = "preferred the original in both orders" if jd["verdict"] == "worse" else "split between the two orders"
+        fails.append(f"The blind judge did not prefer the revision in both orders; it {how}. Its reason: {jd['decisive_difference']}")
+    return {
+        "draft": draft, "diagnosis": diag, "voice": voice, "moves": moves, "questions": questions, "dropped": dropped,
+        "failures": fails, "fidelity": fid, "judge": jd,
+        "verified": not fails and jd is not None and jd["verdict"] == "better",
+    }
+
+
+def _feedback(rnd: dict) -> str:
+    lines = [f"- {f}" for f in rnd["failures"]]
+    for k in (rnd["judge"] or {}).get("keep", []):
+        lines.append(f'- The original did this better, so keep it: "{k["quote"]}" ({k["why"]})')
+    return "\n".join(lines)
+
+
+def revise(
+    essay: str,
+    *,
+    prompt: str = "",
+    essay_type: str = "personal",
+    word_limit: int | None = 650,
+    school: str = "",
+    review: dict | None = None,
+    model: str | None = None,
+    placeholders: bool = True,
+    max_rounds: int = 2,
+    progress: Callable[[str], None] | None = None,
+) -> dict:
+    essay = unicodedata.normalize("NFC", essay.strip().replace("\r\n", "\n"))
+    if len(essay.split()) < 50:
+        raise ValueError("That is under 50 words. Paste the full essay.")
+    model = model or llm.DEFAULT_MODEL
+    say = progress or (lambda s: None)
+    usage_before = dict(llm.usage)
+    meta = {"prompt": prompt, "essay_type": essay_type, "word_limit": word_limit, "school": school}
+    lint_text = summarize_for_prompt(lint(essay, word_limit))
+    context = review_context(review)
+
+    rounds: list[dict] = []
+    for n in range(1, max(1, max_rounds) + 1):
+        prev = rounds[-1] if rounds else None
+        say("Writing the revision plan and draft" if n == 1 else f"Round {n - 1} failed {len(prev['failures'])} check(s); revising again")
+        try:
+            raw = llm.ask_json(
+                rubric.REVISE_SYSTEM,
+                rubric.revise_prompt(essay, meta, lint_text, context, _feedback(prev) if prev else "",
+                                     prev["draft"] if prev else "", placeholders),
+                rubric.REVISE_SCHEMA, model=model,
+            )
+        except llm.LLMError as err:
+            if not rounds:
+                raise
+            say(f"The second revision failed and was skipped: {err}")
+            break
+        say("Checking the draft: invented facts, mechanical checks, and a blind comparison with the original")
+        rnd = {**_evaluate(essay, raw, meta, model, placeholders), "round": n}
+        rounds.append(rnd)
+        if rnd["verified"]:
+            break
+    # A verified round beats an unverified one; then fewer failures; then the earlier round.
+    best = max(rounds, key=lambda r: (r["verified"], -len(r["failures"]), -r["round"]))
+    say("Revision verified against your original" if best["verified"] else "Revision could not be verified; see the reasons")
+    return {
+        "version": 1,
+        "created": dt.datetime.now().isoformat(timespec="seconds"),
+        "meta": meta,
+        "essay": essay,
+        "verified": best["verified"],
+        "diagnosis": best["diagnosis"],
+        "voice": best["voice"],
+        "moves": best["moves"],
+        "draft": best["draft"],
+        "questions": best["questions"],
+        "diff": diff_segments(essay, best["draft"]),
+        "checks": {
+            "failures": best["failures"],
+            "judge": best["judge"],
+            "fidelity": best["fidelity"],
+            "word_count": word_count(best["draft"]),
+            "unverified_quotes_dropped": best["dropped"],
+        },
+        "rounds": [{"round": r["round"], "verified": r["verified"], "failures": r["failures"],
+                    "verdict": (r["judge"] or {}).get("verdict")} for r in rounds],
+        "used_review": bool(context),
+        "usage": {k: round(llm.usage[k] - usage_before.get(k, 0), 4) for k in llm.usage},
+        "models": {"reviser": model},
+    }

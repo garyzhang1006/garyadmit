@@ -66,3 +66,54 @@ def test_review_context_survives_old_reviews_and_includes_lessons():
            "categories": {"hook": {"score": 4.0, "to_raise": "start in the kitchen"}, "voice": {"score": 7.0, "to_raise": "x"}}}
     ctx = rv.review_context(new)
     assert "show the scene" in ctx and "start in the kitchen" in ctx
+
+
+from test_core import ESSAY, REVISED, fake  # noqa: E402,F401  (fixture reuse)
+
+
+def test_revise_verified_when_judge_prefers_revision_in_both_orders(fake):
+    v = rv.revise(ESSAY)
+    assert v["verified"] and len(v["rounds"]) == 1 and v["checks"]["failures"] == []
+    assert v["checks"]["judge"]["verdict"] == "better" and v["checks"]["judge"]["voice_share"] == 1.0
+    assert v["voice"]["best_lines"] == ["asked who had taught me to cheat"]
+    assert [m["target"] for m in v["moves"]] == ["Ever since I was little, I have had a passion for helping others.", ""]
+    assert v["checks"]["unverified_quotes_dropped"] == 2
+    assert v["questions"] == [{"placeholder": "[what she said about the pleats]", "question": "What did she say?"}]
+    assert "".join(s["text"] for s in v["diff"]["segments"] if s["op"] != "delete") == REVISED.strip()
+    assert v["checks"]["judge"]["keep"][0]["quote"] == "asked who had taught me to cheat"
+
+
+def test_position_biased_judge_never_verifies(fake):
+    fake.judge_mode = "position"
+    v = rv.revise(ESSAY)
+    assert not v["verified"] and len(v["rounds"]) == 2
+    assert all(r["verdict"] == "split" for r in v["rounds"])
+    assert any("did not prefer" in f for f in v["checks"]["failures"])
+
+
+def test_judge_preferring_original_is_reported_as_worse(fake):
+    fake.judge_mode = "original"
+    v = rv.revise(ESSAY, max_rounds=1)
+    assert not v["verified"] and v["rounds"][0]["verdict"] == "worse"
+
+
+def test_failed_gate_is_fed_back_and_second_round_can_verify(fake):
+    fake.drafts = [REVISED + " It was a tapestry of memories.", REVISED]
+    v = rv.revise(ESSAY)
+    assert v["verified"] and [r["verified"] for r in v["rounds"]] == [False, True]
+    assert "tapestry" in fake.revise_prompts[1] and "<previous_draft>" in fake.revise_prompts[1]
+    assert "tapestry" not in fake.revise_prompts[0]
+
+
+def test_invented_fact_fails_but_hallucinated_flag_is_ignored(fake):
+    fake.invented = [{"text": "not in the draft at all", "why_new": "x"}]
+    assert rv.revise(ESSAY)["verified"]
+    fake.invented = [{"text": "She looked at the bag", "why_new": "new event"}]
+    v = rv.revise(ESSAY)
+    assert not v["verified"] and any("adds facts" in f for f in v["checks"]["failures"])
+
+
+def test_revise_refuses_short_text(fake):
+    import pytest
+    with pytest.raises(ValueError):
+        rv.revise("Too short to revise.")
