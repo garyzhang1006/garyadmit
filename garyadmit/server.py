@@ -36,8 +36,8 @@ def _run_job(job_id: str, req: dict, corpus_path: str | None) -> None:
             word_limit=limit,
             school=req.get("school", ""),
             model="sonnet" if req.get("fast") else None,
-            n_compare=int(req.get("compare", 3)),
-            n_anchor=int(req.get("anchors", 4)),
+            n_compare=min(max(int(req.get("compare", 3)), 0), 5),
+            n_anchor=min(max(int(req.get("anchors", 4)), 0), 4),
             corpus_path=corpus_path,
             progress=progress,
         )
@@ -67,7 +67,16 @@ def make_handler(corpus_path: str | None):
         def _json(self, code: int, obj) -> None:
             self._send(code, json.dumps(obj).encode())
 
+        def _addressed_locally(self) -> bool:
+            # A web page that rebinds its domain to 127.0.0.1 still sends its own Host
+            # header; refusing those keeps other sites from reading saved essays.
+            port = self.server.server_address[1]
+            host = (self.headers.get("Host") or "").lower()
+            return host in {f"127.0.0.1:{port}", f"localhost:{port}", f"[::1]:{port}"}
+
         def do_GET(self):
+            if not self._addressed_locally():
+                return self._json(403, {"error": "forbidden host"})
             path = self.path.split("?")[0]
             if path in ("/", "/index.html"):
                 return self._send(200, (WEB / "index.html").read_bytes(), "text/html; charset=utf-8")
@@ -101,8 +110,16 @@ def make_handler(corpus_path: str | None):
             return self._json(404, {"error": "not found"})
 
         def do_POST(self):
+            if not self._addressed_locally():
+                return self._json(403, {"error": "forbidden host"})
             if self.path != "/api/review":
                 return self._json(404, {"error": "not found"})
+            # Requiring JSON forces a CORS preflight for cross-site pages, which this server
+            # never approves, and the Origin check covers browsers that send one anyway.
+            origin = self.headers.get("Origin")
+            if not (self.headers.get("Content-Type") or "").startswith("application/json") or (
+                    origin and origin.lower() != "http://" + (self.headers.get("Host") or "").lower()):
+                return self._json(403, {"error": "cross-site request refused"})
             n = int(self.headers.get("Content-Length") or 0)
             if n > MAX_BODY:
                 return self._json(413, {"error": "essay too long"})

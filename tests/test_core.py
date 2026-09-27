@@ -1,6 +1,7 @@
 import json
 import threading
 import time
+import urllib.error
 import urllib.request
 
 import pytest
@@ -196,6 +197,17 @@ def test_server_runs_a_job(fake):
             time.sleep(0.05)
         assert j["status"] == "done", j.get("error")
         assert j["result"]["score"] > 0
+        # Another site's page cannot start reviews or read saved essays.
+        for headers in ({"Content-Type": "text/plain"},
+                        {"Content-Type": "application/json", "Origin": "https://evil.example"}):
+            bad = urllib.request.Request(base + "/api/review", data=b"{}", headers=headers, method="POST")
+            with pytest.raises(urllib.error.HTTPError) as err:
+                urllib.request.urlopen(bad)
+            assert err.value.code == 403
+        rebound = urllib.request.Request(base + "/api/history", headers={"Host": "evil.example:80"})
+        with pytest.raises(urllib.error.HTTPError) as err:
+            urllib.request.urlopen(rebound)
+        assert err.value.code == 403
     finally:
         httpd.shutdown()
 
