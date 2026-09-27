@@ -520,8 +520,9 @@ function turnHtml(t, i) {
     <div class="msg bot"><div>${t.reply}</div>
     ${t.edited ? html`
       ${t.changes.length ? html`<ul class="changes">${t.changes.map(c => html`<li>${c}</li>`)}</ul>` : ""}
-      ${ratingHtml(t.rating)}
       ${fails.length ? html`<div class="banner no"><b>Not applied.</b> Your working essay was left as it was, because these checks failed:<ul>${fails.map(f => html`<li>${f}</li>`)}</ul></div>` : ""}
+      ${ratingHtml(t.rating)}
+      ${(t.checks.inherited || []).length ? html`<div class="w">Already in your working essay before this change, and never stated in your original: ${t.checks.inherited.map(i => html`<q>${i.text}</q> `)}</div>` : ""}
       ${asked.length ? html`<div class="w">New questions. Fill them in with true details, or cut the line:</div>${asked.map(q => html`<div class="w"><mark class="ask">${q.placeholder}</mark> ${q.question}</div>`)}` : ""}
       <div class="toolbar"><button class="btn-link" data-turn="${i}" data-act="diff">Show what changed</button><button class="btn-link" data-turn="${i}" data-act="use">${t.passed ? "Use this version" : "Use this version anyway"}</button></div>` : ""}
     </div>`;
