@@ -515,16 +515,20 @@ function ratingHtml(g) {
 
 function turnHtml(t, i) {
   const fails = t.checks.failures;
+  const asked = t.questions.filter(q => !t.base.includes(q.placeholder));  // the working essay already shows older brackets
   return html`<div class="msg me">${t.message}</div>
     <div class="msg bot"><div>${t.reply}</div>
     ${t.edited ? html`
       ${t.changes.length ? html`<ul class="changes">${t.changes.map(c => html`<li>${c}</li>`)}</ul>` : ""}
       ${ratingHtml(t.rating)}
-      ${fails.length ? html`<div class="banner no"><b>Checks that failed</b><ul>${fails.map(f => html`<li>${f}</li>`)}</ul></div>` : ""}
-      ${t.questions.length ? html`<div class="w">Fill these in with true details, or cut the line:</div>${t.questions.map(q => html`<div class="w"><mark class="ask">${q.placeholder}</mark> ${q.question}</div>`)}` : ""}
-      <div class="toolbar"><button class="btn-link" data-turn="${i}" data-act="diff">Show what changed</button><button class="btn-link" data-turn="${i}" data-act="use">Use this version</button></div>` : ""}
+      ${fails.length ? html`<div class="banner no"><b>Not applied.</b> Your working essay was left as it was, because these checks failed:<ul>${fails.map(f => html`<li>${f}</li>`)}</ul></div>` : ""}
+      ${asked.length ? html`<div class="w">New questions. Fill them in with true details, or cut the line:</div>${asked.map(q => html`<div class="w"><mark class="ask">${q.placeholder}</mark> ${q.question}</div>`)}` : ""}
+      <div class="toolbar"><button class="btn-link" data-turn="${i}" data-act="diff">Show what changed</button><button class="btn-link" data-turn="${i}" data-act="use">${t.passed ? "Use this version" : "Use this version anyway"}</button></div>` : ""}
     </div>`;
 }
+
+// Only changes that passed every check replace the working essay; the rest wait for "Use this version anyway".
+const applied = t => t.edited && t.passed;
 
 function threadHtml(r, pending) {
   const out = (r.chat || []).map(turnHtml);
@@ -537,7 +541,7 @@ function threadHtml(r, pending) {
 function chipsHtml(r) {
   const turns = r.chat || [];
   if (!turns.length) return html`${SUGGEST.map(([label, say]) => html`<button class="btn-link chip" data-say="${say}">${label}</button>`)}`;
-  const g = turns[turns.length - 1].rating;
+  const last = turns[turns.length - 1], g = applied(last) && last.rating;
   return g && g.target && g.after < g.target && g.to_ten
     ? html`<button class="btn-link chip" data-say="${`Push ${g.aspect} closer to a ${g.target}. The judge said: ${g.to_ten}`}">Push ${g.aspect} closer to ${g.target}</button>`
     : html``;
@@ -573,7 +577,7 @@ function showWorking(turnIndex) {
 
 function initChat(r) {
   // Start from the edited essay when there is one, with every saved change on top of it.
-  versions = [(r.revision && r.revision.draft) || r.essay, ...(r.chat || []).filter(t => t.edited).map(t => t.draft)];
+  versions = [(r.revision && r.revision.draft) || r.essay, ...(r.chat || []).filter(applied).map(t => t.draft)];
   showWorking();
 }
 
@@ -592,14 +596,14 @@ async function sendChat(text) {
   mount($("#chips"), html``);
   paint();
   const body = r.id ? { review_id: r.id } : { essay: r.essay, ...r.meta };
-  Object.assign(body, { message, draft: working(),
-    history: (r.chat || []).flatMap(t => [{ role: "user", text: t.message }, { role: "assistant", text: t.reply }]) });
+  Object.assign(body, { message, draft: working(), history: (r.chat || []).flatMap(t => [{ role: "user", text: t.message },
+    { role: "assistant", text: t.reply + (t.edited && !t.passed ? " (Not applied: it failed the checks, so the draft stayed as it was.)" : "") }]) });
   let failed = false;
   try {
     const job = await startJob("/api/chat", body);
     const t = await pollJob(job, j => { pending.steps = j.progress; paint(); });
     r.chat = [...(r.chat || []), t];
-    if (current === r && t.edited) versions.push(t.draft);
+    if (current === r && applied(t)) versions.push(t.draft);
   } catch (e) {
     failed = true;
     pending.error = String(e);
