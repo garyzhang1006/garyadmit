@@ -74,6 +74,20 @@ def test_chat_gates_blame_an_edit_only_for_what_it_added():
     assert any("reads as a statement" in f for f in rv.gates(ORIG, base + " [my sister]", meta, base=base))
 
 
+def test_chat_gates_let_the_student_ask_for_a_flagged_phrase_dash_or_lesson():
+    meta = {"word_limit": None}
+    base = "She fished it out with her chopsticks and ate it at the stove."
+    dash = base.replace(" and ate", " — and ate")
+    assert any("em dash" in f for f in rv.gates(ORIG, dash, meta, base=base))
+    assert rv.gates(ORIG, dash, meta, base=base, allow="add an em dash before 'and'") == []
+    lesson = base + "\n\nI realized that home is a smell."
+    assert any("lesson" in f for f in rv.gates(ORIG, lesson, meta, base=base))
+    assert rv.gates(ORIG, lesson, meta, base=base, allow="end with 'I realized that home is a smell'") == []
+    stock = base + " At the end of the day, she ate them anyway."
+    assert any("at the end of the day" in f for f in rv.gates(ORIG, stock, meta, base=base))
+    assert rv.gates(ORIG, stock, meta, base=base, allow="add her saying: at the end of the day, family comes first") == []
+
+
 def test_diff_segments_rebuild_both_texts():
     a, b = "one two three four five", "one three four six five seven"
     d = rv.diff_segments(a, b)

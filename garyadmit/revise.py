@@ -44,9 +44,11 @@ def _phrases(text: str) -> set[str]:
     return {re.sub(r"\s+", " ", text[s:e].lower()) for h in rep["hits"] if h["rule"] in PHRASE_RULES for s, e in h["spans"]}
 
 
-def _moral_ending(text: str) -> bool:
+def _moral_ending(text: str) -> str:
+    """The lesson-stating phrase in the last paragraph, or "" when the text ends on something else."""
     paras = [p for p in re.split(r"\n\s*\n|\n(?=\s*\S)", text.strip()) if p.strip()]
-    return bool(paras) and re.search(MORAL_ENDING, paras[-1], re.I) is not None
+    m = re.search(MORAL_ENDING, paras[-1], re.I) if paras else None
+    return m.group(0) if m else ""
 
 
 def _asks(bracket: str) -> bool:
@@ -62,9 +64,11 @@ def _em_rate(text: str) -> float:
     return _ems(text) / max(1, word_count(text)) * 100
 
 
-def gates(original: str, revised: str, meta: dict, placeholders: bool = True, base: str | None = None) -> list[str]:
+def gates(original: str, revised: str, meta: dict, placeholders: bool = True, base: str | None = None,
+          allow: str = "") -> list[str]:
     """Mechanical checks on a draft. Returns one plain-language failure per problem; empty means it passed.
-    `base` is the draft a chat edit started from; when given, only what the edit added can fail."""
+    `base` is the draft a chat edit started from; when given, only what the edit added can fail.
+    `allow` is what the student typed in the chat, so a phrase, dash, or closing lesson they asked for passes."""
     if not revised.strip():
         return ["The draft is empty."]
     fails = []
@@ -78,15 +82,17 @@ def gates(original: str, revised: str, meta: dict, placeholders: bool = True, ba
         fails.append(f"The draft is {wc} words, over the {limit}-word limit. Brackets count toward the limit.")
     # Questions in brackets may quote the student's own phrasing, so only the prose is checked.
     prose = strip_brackets(revised)
-    new = sorted(_phrases(prose) - _phrases(ref))
+    new = sorted(_phrases(prose) - _phrases(ref) - (_phrases(allow) if allow else set()))
     if new:
         fails.append(f"The draft adds stock or AI-sounding phrases the {'original' if base is None else 'previous version'} did not have: "
                      + ", ".join(f'"{p}"' for p in new) + ".")
     # Bracket questions at the end of a chat's base would hide its real last paragraph, so both sides are read as prose.
-    if _moral_ending(prose) and not _moral_ending(strip_brackets(ref)):
+    moral = _moral_ending(prose)
+    if moral and not _moral_ending(strip_brackets(ref)) and moral.lower() not in allow.lower():
         fails.append('The draft now ends by stating the lesson ("I learned...", "I realized..."). End on a moment or image instead.')
     # A chat edit that cuts words raises the rate of dashes it never touched, so it is held to the count instead.
-    if (_em_rate(revised) > max(_em_rate(original), 1.0)) if base is None else (_ems(revised) > _ems(base)):
+    added_dash = (_em_rate(revised) > max(_em_rate(original), 1.0)) if base is None else (_ems(revised) > _ems(base))
+    if added_dash and "—" not in allow and not re.search(r"\bdash", allow, re.I):
         fails.append("The draft adds em dashes, which read as AI-polished prose. Use periods and commas.")
     brackets = BRACKET.findall(revised)
     kept = BRACKET.findall(base) if base is not None else []

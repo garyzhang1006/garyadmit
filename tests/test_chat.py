@@ -118,6 +118,12 @@ def test_an_invented_clause_added_to_a_sentence_the_essay_already_had_is_caught(
     assert any("adds facts" in f and "until the week she died" in f for f in t["checks"]["failures"])
 
 
+def test_a_phrase_or_dash_the_student_asked_for_does_not_fail_the_edit(fake):
+    fake.chat_drafts = [CHAT_DRAFT.replace("She never corrected me.", "She never corrected me — not once.")]
+    t = ch.chat(ESSAY, ESSAY, "Open on the exploding dumpling, and add an em dash before 'not once'", max_rounds=1)
+    assert t["passed"], t["checks"]["failures"]
+
+
 def test_judge_advice_reaches_the_editor_but_never_counts_as_a_fact(fake):
     advice = "Name the opera she played, like Farewell My Concubine."
     ch.chat(ESSAY, ESSAY, "Push the hook closer to a 10.", advice=advice)

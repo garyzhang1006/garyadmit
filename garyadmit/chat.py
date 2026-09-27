@@ -71,14 +71,14 @@ def _questions(raw: dict, draft: str) -> list[dict]:
     return [{"placeholder": b, "question": asked.get(b) or b[1:-1]} for b in dict.fromkeys(BRACKET.findall(draft))]
 
 
-def _evaluate(original: str, facts: str, base: str, raw: dict, meta: dict, model: str) -> dict:
+def _evaluate(original: str, facts: str, allow: str, base: str, raw: dict, meta: dict, model: str) -> dict:
     draft = _norm(raw.get("revised_essay") if raw.get("edit") else "")
     # Every edit is rated, so the editor cannot skip the judge by leaving the aspect empty; only a
     # requested quality gain has to score higher, while a fact or mechanical change only must not score lower.
     asked = (raw.get("aspect") or "").strip()
     aspect = asked or WHOLE
     category = raw.get("category") if asked and raw.get("category") in rubric.CATEGORIES else ""
-    fails = gates(original, draft, meta, base=base)
+    fails = gates(original, draft, meta, base=base, allow=allow)
     fid = rating = None
     inherited = []
     if draft:
@@ -185,7 +185,7 @@ def chat(
                            [], usage_before, model)
         say("Checking it: invented facts, mechanical checks, and a blind before-and-after rating of "
             + ((raw.get("aspect") or "").strip() or WHOLE))
-        rnd = {**_evaluate(original, facts, base, raw, meta, model), "round": n}
+        rnd = {**_evaluate(original, facts, "\n".join(told), base, raw, meta, model), "round": n}
         rounds.append(rnd)
         if not rnd["failures"]:
             break
