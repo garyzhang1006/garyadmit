@@ -576,6 +576,45 @@ function initChat(r) {
   showWorking();
 }
 
+async function sendChat(text) {
+  const r = current, message = (text || "").trim();
+  if (!message || chatBusy || !r) return;
+  chatBusy = true;
+  const pending = { message, steps: [] };
+  const paint = () => {
+    if (current !== r) return;
+    mount($("#thread"), threadHtml(r, pending));
+    $("#thread").scrollTop = $("#thread").scrollHeight;
+  };
+  $("#chatInput").value = "";
+  $("#chatInput").disabled = $("#chatSend").disabled = $("#chatUndo").disabled = true;
+  mount($("#chips"), html``);
+  paint();
+  const body = r.id ? { review_id: r.id } : { essay: r.essay, ...r.meta };
+  Object.assign(body, { message, draft: working(),
+    history: (r.chat || []).flatMap(t => [{ role: "user", text: t.message }, { role: "assistant", text: t.reply }]) });
+  let failed = false;
+  try {
+    const job = await startJob("/api/chat", body);
+    const t = await pollJob(job, j => { pending.steps = j.progress; paint(); });
+    r.chat = [...(r.chat || []), t];
+    if (current === r && t.edited) versions.push(t.draft);
+  } catch (e) {
+    failed = true;
+    pending.error = String(e);
+    paint();
+  } finally {
+    chatBusy = false;
+    if (current === r) {
+      if (!failed) { mount($("#thread"), threadHtml(r)); $("#thread").scrollTop = $("#thread").scrollHeight; }
+      mount($("#chips"), chipsHtml(r));
+      $("#chatInput").disabled = $("#chatSend").disabled = false;
+      if (failed) $("#chatInput").value = message;
+      showWorking();
+    }
+  }
+}
+
 function tierLabel(t) { return t === "exemplar" ? "published by admissions office" : t === "admitted" ? "admitted student" : t; }
 
 function render(r) {
@@ -713,10 +752,19 @@ document.addEventListener("click", e => {
     show("compose");
     window.scrollTo({ top: 0 });
   }
+  if (e.target.closest("#chatSend")) sendChat($("#chatInput").value);
+  const chip = e.target.closest("[data-say]"); if (chip) sendChat(chip.dataset.say);
   const row = e.target.closest("#history .row");
   if (row) {
     $("#history").style.display = "none";
     fetch("/api/history/" + encodeURIComponent(row.dataset.id)).then(r => r.json()).then(render).catch(err => showError(String(err)));
+  }
+});
+
+document.addEventListener("keydown", e => {
+  if (e.target.id === "chatInput" && e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    sendChat(e.target.value);
   }
 });
 
