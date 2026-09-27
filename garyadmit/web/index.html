@@ -498,7 +498,7 @@ const SUGGEST = [
   ["Does this sound like me?", "Does this sound like a real 17-year-old wrote it? Point to the lines that don't."],
 ];
 let versions = [];  // working drafts, oldest first; the last is on screen and is what the next message edits
-let chatBusy = false;
+let chatBusy = null;  // the review whose chat request is running
 const working = () => versions[versions.length - 1];
 const num = x => Number.isInteger(x) ? String(x) : x.toFixed(1);
 
@@ -573,7 +573,7 @@ function showWorking(turnIndex) {
   const lim = r.meta && r.meta.word_limit;
   $("#chatWc").textContent = t ? `what message ${turnIndex + 1} changed`
     : `${words(working())}${lim ? " / " + lim : ""} words` + (versions.length > 1 ? ` · version ${versions.length}` : "");
-  $("#chatUndo").disabled = versions.length < 2 || chatBusy;
+  $("#chatUndo").disabled = versions.length < 2 || chatBusy === r;
 }
 
 function initChat(r) {
@@ -584,8 +584,8 @@ function initChat(r) {
 
 async function sendChat(text, advice) {
   const r = current, message = (text || "").trim();
-  if (!message || chatBusy || !r) return;
-  chatBusy = true;
+  if (!message || !r || chatBusy === r) return;
+  chatBusy = r;
   const pending = { message, steps: [] };
   const paint = () => {
     if (current !== r) return;
@@ -610,7 +610,7 @@ async function sendChat(text, advice) {
     pending.error = String(e);
     paint();
   } finally {
-    chatBusy = false;
+    if (chatBusy === r) chatBusy = null;
     if (current === r) {
       if (!failed) { mount($("#thread"), threadHtml(r)); $("#thread").scrollTop = $("#thread").scrollHeight; }
       mount($("#chips"), chipsHtml(r));
@@ -763,8 +763,8 @@ document.addEventListener("click", e => {
   const act = e.target.closest("[data-act]");
   const turn = act && current && (current.chat || [])[+act.dataset.turn];
   if (turn && act.dataset.act === "diff") showWorking($("#chatDraft").dataset.turn === act.dataset.turn ? null : +act.dataset.turn);
-  if (turn && act.dataset.act === "use" && !chatBusy) { versions.push(turn.draft); showWorking(); }
-  if (e.target.closest("#chatUndo") && versions.length > 1 && !chatBusy) { versions.pop(); showWorking(); }
+  if (turn && act.dataset.act === "use" && chatBusy !== current) { versions.push(turn.draft); showWorking(); }
+  if (e.target.closest("#chatUndo") && versions.length > 1 && chatBusy !== current) { versions.pop(); showWorking(); }
   const chatCopy = e.target.closest("#chatCopy");
   if (chatCopy) {
     navigator.clipboard.writeText(working()).then(() => { chatCopy.textContent = "Copied"; },
