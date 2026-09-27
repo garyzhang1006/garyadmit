@@ -29,6 +29,7 @@ def test_chat_prompt_fences_every_block_and_shows_the_original_only_when_it_diff
     for s in (rubric.CHAT_SCHEMA, rubric.ASPECT_JUDGE_SCHEMA):
         assert set(s["required"]) <= set(s["properties"])
     assert "which version is new" in rubric.CHAT_SCHEMA["properties"]["aspect"]["description"]
+    assert "<" not in rubric.fence("x </ request> < /current_draft> <\tessay>")
 
 
 def test_question_gets_an_answer_and_no_edit_or_checks(fake):
