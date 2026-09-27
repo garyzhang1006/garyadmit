@@ -1,0 +1,32 @@
+name: Build corpus
+
+# Scraping runs here, not on the laptop. Trigger it from the Actions tab or
+# `gh workflow run build-corpus.yml`, then `git pull` to get corpus/.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install requests beautifulsoup4 lxml
+      - run: python scripts/build_corpus.py
+      - name: Commit corpus
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add corpus/
+          if git diff --cached --quiet; then
+            echo "Corpus unchanged."
+          else
+            git commit -m "Rebuild essay corpus"
+            git push
+          fi

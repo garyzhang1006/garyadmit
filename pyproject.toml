@@ -1,0 +1,27 @@
+[project]
+name = "garyadmit"
+version = "0.1.0"
+description = "Honest college essay reviews that run on your Claude subscription: calibrated scores, line edits, and blind comparisons against real published essays."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+corpus = ["requests>=2.31", "beautifulsoup4>=4.12", "lxml>=5"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+garyadmit = "garyadmit.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["garyadmit"]
+
+[tool.setuptools.package-data]
+garyadmit = ["web/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
