@@ -155,10 +155,11 @@ def chat(
     say = progress or (lambda s: None)
     usage_before = dict(llm.usage)
     meta = {"prompt": "", "essay_type": "personal", "word_limit": 650, "school": "", **(meta or {})}
-    history = [{"role": h["role"], "text": _norm(str(h.get("text", "")))[:MAX_TURN_CHARS]} for h in (history or [])
+    history = [{"role": h["role"], "text": _norm(str(h.get("text", "")))} for h in (history or [])
                if isinstance(h, dict) and h.get("role") in ("user", "assistant") and str(h.get("text", "")).strip()]
-    # What the student typed in this chat is theirs to state, so the fact check accepts it alongside the original.
+    # What the student typed in this chat is theirs to state, so the fact check accepts it, in full, alongside the original.
     told = [h["text"] for h in history if h["role"] == "user"] + [message]
+    shown = [{**h, "text": h["text"][:MAX_TURN_CHARS]} for h in history[-MAX_TURNS:]]
     facts = original + "\n\nThe student also told their editor, in their own words:\n" + "\n".join(f"- {t}" for t in told)
     lint_text = summarize_for_prompt(lint(base, meta.get("word_limit")))
     context = review_context(review)
@@ -169,7 +170,7 @@ def chat(
         say("Making the change" if n == 1 else f"The first try failed {len(prev['failures'])} check(s); trying again")
         try:
             raw = llm.ask_json(rubric.CHAT_SYSTEM,
-                               rubric.chat_prompt(original, base, message, meta, lint_text, history[-MAX_TURNS:], context,
+                               rubric.chat_prompt(original, base, message, meta, lint_text, shown, context,
                                                   _feedback(prev) if prev else "", prev["draft"] if prev else "", _norm(advice)),
                                rubric.CHAT_SCHEMA, model=model)
         except llm.LLMError as err:

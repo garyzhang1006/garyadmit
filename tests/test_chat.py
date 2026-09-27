@@ -74,7 +74,7 @@ def test_facts_the_student_typed_in_chat_count_as_facts(fake):
     fake.invented = [{"text": line, "why_new": "the original never says this"}]
     history = [{"role": "user", "text": line}, {"role": "assistant", "text": "Got it."}]
     t = ch.chat(ESSAY, ESSAY, "Put in what she said about my pleats", history=history)
-    assert t["passed"] and line in fake.fidelity_prompts[0]
+    assert t["passed"] and line in fake.fidelity_prompts[0].split("</original>")[0]
     fake.chat_prompts.clear()
     t = ch.chat(ESSAY, ESSAY, "Put in what she said about my pleats")
     assert not t["passed"] and any("adds facts" in f for f in t["checks"]["failures"])
@@ -112,6 +112,14 @@ def test_judge_advice_reaches_the_editor_but_never_counts_as_a_fact(fake):
     assert advice in fake.chat_prompts[0] and advice not in fake.fidelity_prompts[0].split("</original>")[0]
 
 
+def test_long_student_messages_count_as_facts_in_full(fake):
+    detail = "She called my pleats little shipwrecks."
+    long_msg = "Some context. " * 150 + detail
+    fake.chat_drafts = [CHAT_DRAFT + "\n\n" + detail]
+    ch.chat(ESSAY, ESSAY, "Add that", history=[{"role": "user", "text": long_msg}, {"role": "assistant", "text": "ok"}])
+    assert detail in fake.fidelity_prompts[0].split("</original>")[0]
+
+
 def test_failed_rating_is_reported_not_fatal(fake):
     fake.fail_rating = True
     t = ch.chat(ESSAY, ESSAY, HOOK, max_rounds=1)
@@ -136,7 +144,7 @@ def test_edit_builds_on_the_current_draft_and_keeps_all_user_facts(fake):
     assert "".join(s["text"] for s in t["diff"]["segments"] if s["op"] != "insert").split() == CHAT_DRAFT.split()
     p = fake.chat_prompts[0]
     assert "<original>" in p and "note 11" in p and "note 0" not in p
-    assert "note 0" in fake.fidelity_prompts[0]
+    assert "note 0" in fake.fidelity_prompts[0].split("</original>")[0]
 
 
 def test_chat_refuses_empty_requests_and_short_essays(fake):
