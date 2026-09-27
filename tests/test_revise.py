@@ -53,6 +53,16 @@ def test_gate_wants_brackets_phrased_as_questions():
     assert len(fails) == 1 and "reads as a statement" in fails[0]
 
 
+def test_chat_gate_reads_the_bases_last_paragraph_past_its_bracket_questions():
+    ask = "\n\n[What did you say back to her?]"
+    base = "She fished it out with her chopsticks.\n\nShe laughed and asked who had taught me to cheat." + ask
+    new = base.replace("fished it out", "fished the skin out")
+    assert rv.gates(ORIG, new, {"word_limit": None}, base=base) == []
+    plain = "She fished it out with her chopsticks." + ask
+    added = plain.replace(ask, "\n\nFrom her I learned that family matters." + ask)
+    assert any("lesson" in f for f in rv.gates(ORIG, added, {"word_limit": None}, base=plain))
+
+
 def test_diff_segments_rebuild_both_texts():
     a, b = "one two three four five", "one three four six five seven"
     d = rv.diff_segments(a, b)

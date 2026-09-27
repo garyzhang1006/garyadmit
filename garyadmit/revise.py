@@ -82,7 +82,8 @@ def gates(original: str, revised: str, meta: dict, placeholders: bool = True, ba
     if new:
         fails.append(f"The draft adds stock or AI-sounding phrases the {'original' if base is None else 'previous version'} did not have: "
                      + ", ".join(f'"{p}"' for p in new) + ".")
-    if _moral_ending(prose) and not _moral_ending(ref):
+    # Bracket questions at the end of a chat's base would hide its real last paragraph, so both sides are read as prose.
+    if _moral_ending(prose) and not _moral_ending(strip_brackets(ref)):
         fails.append('The draft now ends by stating the lesson ("I learned...", "I realized..."). End on a moment or image instead.')
     # A chat edit that cuts words raises the rate of dashes it never touched, so it is held to the count instead.
     if (_em_rate(revised) > max(_em_rate(original), 1.0)) if base is None else (_ems(revised) > _ems(base)):
