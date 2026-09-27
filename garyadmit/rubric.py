@@ -61,7 +61,8 @@ CALIBRATION = """Calibration rules. These outrank any instinct to encourage or t
 def fence(text: str) -> str:
     """Neutralize our own tag names inside untrusted text so an essay cannot close
     its <essay> block and pose as grader instructions."""
-    return re.sub(r"<(/?)(essay(?:_[12])?|essays?|draft_[12]|previous_draft|original|revised|review_notes)\b",
+    return re.sub(r"<(/?)(essay(?:_[12])?|essays?|draft_[12]|previous_draft|original|revised|review_notes|"
+                  r"current_draft|conversation|request|previous_attempt)\b",
                   "\u2039\\1\\2", text, flags=re.I)
 
 
