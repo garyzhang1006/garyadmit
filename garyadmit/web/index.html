@@ -352,7 +352,7 @@ function render(r) {
   show("report");
   const h2h = r.head_to_head || [];
   const cal = r.calibration || [];
-  const tally = xs => { const t = { win: 0, loss: 0, split: 0 }; xs.forEach(x => t[x.verdict]++); return `won ${t.win}, lost ${t.loss}, split ${t.split}`; };
+  const tally = xs => { const t = { win: 0, loss: 0, split: 0 }; xs.forEach(x => t[x.verdict]++); return `won ${t.win}, lost ${t.loss}, split ${t.split}` + (t.split ? "; splits carry no weight" : ""); };
   const parts = [];
   if (h2h.length) parts.push(`${h2h.length} similar published essays (${tally(h2h)})`);
   if (cal.length) parts.push(`${cal.length} hidden human-rated essays (${tally(cal)})`);
