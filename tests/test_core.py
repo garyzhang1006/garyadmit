@@ -121,6 +121,7 @@ class FakeLLM:
         # "new" (the chat edit scores 8 to the old 4 and wins overall), "old" (the reverse), or "position" (draft 1 wins)
         self.aspect_mode = "new"
         self.fail_rating = False
+        self.drifts = []  # voice-drift levels for successive fact checks; "low" once empty
 
     def __call__(self, system, prompt, schema, model, effort):
         props = schema["properties"]
@@ -188,7 +189,9 @@ class FakeLLM:
                     "questions": [{"placeholder": "[what she said about the pleats]", "question": "What did she say?"}]}
         if "invented" in props:
             self.fidelity_prompts.append(prompt)
-            return {"invented": self.invented, "bracket_assumptions": self.assumptions, "voice_drift": {"level": "low", "evidence": ""}}
+            level = self.drifts.pop(0) if self.drifts else "low"
+            return {"invented": self.invented, "bracket_assumptions": self.assumptions,
+                    "voice_drift": {"level": level, "evidence": "It reads like a brochure." if level == "high" else ""}}
         if "polished_essay" in props:
             if self.fail_polish:
                 raise llm.LLMError("polish timed out")

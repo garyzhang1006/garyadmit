@@ -71,7 +71,8 @@ def _questions(raw: dict, draft: str) -> list[dict]:
     return [{"placeholder": b, "question": asked.get(b) or b[1:-1]} for b in dict.fromkeys(BRACKET.findall(draft))]
 
 
-def _evaluate(original: str, facts: str, allow: str, base: str, raw: dict, meta: dict, model: str) -> dict:
+def _evaluate(original: str, facts: str, allow: str, base: str, raw: dict, meta: dict, model: str,
+              base_voice: Callable[[], dict]) -> dict:
     draft = _norm(raw.get("revised_essay") if raw.get("edit") else "")
     # Every edit is rated, so the editor cannot skip the judge by leaving the aspect empty; only a
     # requested quality gain has to score higher, while a fact or mechanical change only must not score lower.
@@ -80,7 +81,7 @@ def _evaluate(original: str, facts: str, allow: str, base: str, raw: dict, meta:
     category = raw.get("category") if asked and raw.get("category") in rubric.CATEGORIES else ""
     fails = gates(original, draft, meta, base=base, allow=allow)
     fid = rating = None
-    inherited = []
+    inherited, inherited_voice = [], ""
     if draft:
         with ThreadPoolExecutor(max_workers=2) as pool:
             f_fid = pool.submit(fidelity, facts, draft, model)
@@ -106,15 +107,19 @@ def _evaluate(original: str, facts: str, allow: str, base: str, raw: dict, meta:
         fails.append("A bracketed question assumes something your essay never says: "
                      + "; ".join(f'"{a["bracket"]}" ({a["why"]})' for a in fid["bracket_assumptions"]) + ". Ask without assuming it.")
     if fid and fid["voice_drift"].get("level") == "high":
-        fails.append(f"The new version no longer sounds like the same writer: {fid['voice_drift'].get('evidence', '')}")
+        prior = base_voice() if base != original else {}
+        if prior.get("level") == "high":
+            inherited_voice = prior.get("evidence") or fid["voice_drift"].get("evidence", "")
+        else:
+            fails.append(f"The new version no longer sounds like the same writer: {fid['voice_drift'].get('evidence', '')}")
     if rating and (rating["after"] < rating["before"] or (asked and rating["after"] == rating["before"])):
         fails.append(f"The blind judge did not score {aspect} {'higher' if asked else 'as high'} after this change "
                      f"({_num(rating['before'])} → {_num(rating['after'])}). Its reason: {rating['why_after']}")
     if rating and rating["overall"] == "worse":
         fails.append(f"The blind judge preferred the whole essay before this change, in both orders. Its reason: {rating['reason']}")
     return {"draft": draft, "reply": (raw.get("reply") or "").strip(), "changes": [str(c) for c in raw.get("changes", []) if str(c).strip()],
-            "questions": _questions(raw, draft), "failures": fails, "fidelity": fid, "inherited": inherited, "rating": rating,
-            "target": _target(raw.get("target"))}
+            "questions": _questions(raw, draft), "failures": fails, "fidelity": fid, "inherited": inherited,
+            "inherited_voice": inherited_voice, "rating": rating, "target": _target(raw.get("target"))}
 
 
 def _target(x) -> int:
@@ -163,6 +168,16 @@ def chat(
     facts = original + "\n\nThe student also told their editor, in their own words:\n" + "\n".join(f"- {t}" for t in told)
     lint_text = summarize_for_prompt(lint(base, meta.get("word_limit")))
     context = review_context(review)
+    memo: dict = {}
+
+    def base_voice() -> dict:
+        # A working draft from an unverified revision may already read less like the student; checked once, only when an edit drifts.
+        if "v" not in memo:
+            try:
+                memo["v"] = fidelity(facts, base, model)["voice_drift"]
+            except llm.LLMError:
+                memo["v"] = {}
+        return memo["v"]
 
     rounds: list[dict] = []
     for n in range(1, max(1, max_rounds) + 1):
@@ -181,11 +196,12 @@ def chat(
         if n == 1 and not raw.get("edit"):
             say("Answered without changing the essay")
             return _result(message, base, {"draft": "", "reply": (raw.get("reply") or "").strip(), "changes": [], "questions": [],
-                                           "failures": [], "fidelity": None, "inherited": [], "rating": None, "target": 0},
+                                           "failures": [], "fidelity": None, "inherited": [], "inherited_voice": "",
+                                           "rating": None, "target": 0},
                            [], usage_before, model)
         say("Checking it: invented facts, mechanical checks, and a blind before-and-after rating of "
             + ((raw.get("aspect") or "").strip() or WHOLE))
-        rnd = {**_evaluate(original, facts, "\n".join(told), base, raw, meta, model), "round": n}
+        rnd = {**_evaluate(original, facts, "\n".join(told), base, raw, meta, model, base_voice), "round": n}
         rounds.append(rnd)
         if not rnd["failures"]:
             break
@@ -214,7 +230,7 @@ def _result(message: str, base: str, best: dict, rounds: list[dict], usage_befor
         "rating": rating,
         "passed": not best["failures"],
         "checks": {"failures": best["failures"], "fidelity": best["fidelity"], "inherited": best["inherited"],
-                   "word_count": word_count(draft)},
+                   "inherited_voice": best["inherited_voice"], "word_count": word_count(draft)},
         "rounds": [{"round": r["round"], "failures": r["failures"], "invented": len((r["fidelity"] or {}).get("invented", [])),
                     "before": (r["rating"] or {}).get("before"), "after": (r["rating"] or {}).get("after")} for r in rounds],
         "usage": {k: round(llm.usage[k] - usage_before.get(k, 0), 4) for k in llm.usage},

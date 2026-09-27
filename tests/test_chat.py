@@ -118,6 +118,22 @@ def test_an_invented_clause_added_to_a_sentence_the_essay_already_had_is_caught(
     assert any("adds facts" in f and "until the week she died" in f for f in t["checks"]["failures"])
 
 
+def test_voice_drift_the_working_draft_already_had_is_noted_not_blamed(fake):
+    fake.chat_drafts = [CHAT_DRAFT.replace("My grandmother ate them anyway.", "My grandmother ate them.")]
+    fake.chat_aspect, fake.chat_category, fake.chat_target = "", "", 0
+    fake.aspect_mode = "tie"
+    fake.drifts = ["high", "high"]  # the edit, then the working draft it started from
+    t = ch.chat(ESSAY, CHAT_DRAFT, "Cut 'anyway' from the first paragraph", max_rounds=1)
+    assert t["passed"] and "brochure" in t["checks"]["inherited_voice"]
+    fake.drifts = ["high", "low"]
+    t = ch.chat(ESSAY, CHAT_DRAFT, "Cut 'anyway' from the first paragraph", max_rounds=1)
+    assert not t["passed"] and any("same writer" in f for f in t["checks"]["failures"])
+    fake.fidelity_prompts.clear()
+    fake.drifts = ["high"]
+    t = ch.chat(ESSAY, ESSAY, HOOK, max_rounds=1)
+    assert not t["passed"] and len(fake.fidelity_prompts) == 1
+
+
 def test_a_phrase_or_dash_the_student_asked_for_does_not_fail_the_edit(fake):
     fake.chat_drafts = [CHAT_DRAFT.replace("She never corrected me.", "She never corrected me — not once.")]
     t = ch.chat(ESSAY, ESSAY, "Open on the exploding dumpling, and add an em dash before 'not once'", max_rounds=1)
