@@ -63,6 +63,17 @@ def test_chat_gate_reads_the_bases_last_paragraph_past_its_bracket_questions():
     assert any("lesson" in f for f in rv.gates(ORIG, added, {"word_limit": None}, base=plain))
 
 
+def test_chat_gates_blame_an_edit_only_for_what_it_added():
+    meta = {"word_limit": 650}
+    base = ORIG + "\n\nCoach said [my brother] was faster. [aaa?] [bbb?] [ccc?] [ddd?]"
+    assert rv.gates(ORIG, base.replace("Coach said", "Coach once said"), meta, base=base) == []
+    long = ORIG + " filler" * 700
+    assert rv.gates(ORIG, long.replace("I have loved", "I loved"), meta, base=long) == []
+    assert any("words, over" in f for f in rv.gates(ORIG, long + " more", meta, base=long))
+    assert any("at most 4" in f for f in rv.gates(ORIG, base + " [eee?]", meta, base=base))
+    assert any("reads as a statement" in f for f in rv.gates(ORIG, base + " [my sister]", meta, base=base))
+
+
 def test_diff_segments_rebuild_both_texts():
     a, b = "one two three four five", "one three four six five seven"
     d = rv.diff_segments(a, b)

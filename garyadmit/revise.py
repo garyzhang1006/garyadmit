@@ -74,7 +74,7 @@ def gates(original: str, revised: str, meta: dict, placeholders: bool = True, ba
                      else "The new version is identical to the draft it started from.")
     limit = meta.get("word_limit")
     wc = word_count(revised)
-    if limit and wc > limit:
+    if limit and wc > limit and (base is None or wc > word_count(base)):
         fails.append(f"The draft is {wc} words, over the {limit}-word limit. Brackets count toward the limit.")
     # Questions in brackets may quote the student's own phrasing, so only the prose is checked.
     prose = strip_brackets(revised)
@@ -88,12 +88,14 @@ def gates(original: str, revised: str, meta: dict, placeholders: bool = True, ba
     # A chat edit that cuts words raises the rate of dashes it never touched, so it is held to the count instead.
     if (_em_rate(revised) > max(_em_rate(original), 1.0)) if base is None else (_ems(revised) > _ems(base)):
         fails.append("The draft adds em dashes, which read as AI-polished prose. Use periods and commas.")
-    n = len(BRACKET.findall(revised))
+    brackets = BRACKET.findall(revised)
+    kept = BRACKET.findall(base) if base is not None else []
+    n = len(brackets)
     if n and not placeholders:
         fails.append(f"The draft has {n} bracketed notes and this run allows none. Work only with what the essay says.")
-    elif n > MAX_BRACKETS:
+    elif n > MAX_BRACKETS and n > len(kept):
         fails.append(f"The draft has {n} bracketed questions; keep at most {MAX_BRACKETS}, the ones that matter most.")
-    told = [b for b in dict.fromkeys(BRACKET.findall(revised)) if not _asks(b)] if placeholders else []
+    told = [b for b in dict.fromkeys(brackets) if not _asks(b) and b not in kept] if placeholders else []
     if told:
         fails.append("A bracketed note reads as a statement, not a question: " + ", ".join(f'"{b}"' for b in told)
                      + ". Ask the student instead, without assuming anything the essay does not say.")
