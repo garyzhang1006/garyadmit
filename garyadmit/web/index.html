@@ -533,7 +533,7 @@ function ratingHtml(g) {
       <span class="caption">blind judge, both orders</span></div>
     ${g.after < 10 && g.to_ten ? html`<div class="w">${short ? `Short of your ${g.target}. ` : ""}What would make it a 10: ${g.to_ten}</div>` : ""}
     <div class="w">${g.overall === "better" ? "The judge also preferred the whole essay after this change."
-      : g.overall === "worse" ? "The judge preferred the whole essay before this change, so consider undoing it."
+      : g.overall === "worse" ? "The judge preferred the whole essay before this change."
       : "The judge split on the whole essay, so this change may not help overall."}</div></div>`;
 }
 
@@ -576,7 +576,7 @@ function chipsHtml(r) {
 
 function chatHtml(r) {
   return html`<h2>Ask for changes</h2>
-    <p class="lede">Type what you want changed, like "make the hook a 10/10" or "cut 50 words", or ask a question. Each change keeps your facts and voice, gets the same invented-fact check as above, and a blind judge scores the part you asked about before and after. On that judge's scale a 10 is the best essay in a reading season, so it will tell you what is still missing. A change takes 1 to 2 minutes and about 4 model calls (up to 8 if the first try fails a check); a question takes one.</p>
+    <p class="lede">Type what you want changed, like "make the hook a 10/10" or "cut 50 words", or ask a question. Each change keeps your facts and voice, gets the same invented-fact check as above, and a blind judge scores the part you asked about before and after. On that judge's scale a 10 is the best essay in a reading season, so it will tell you what is still missing. A change takes 1 to 3 minutes and about 4 model calls (up to 8 if the first try fails a check); a question takes one.</p>
     <div class="chatcols">
       <div class="panel"><h3><span>Working essay</span><span id="chatWc"></span></h3>
         <div class="toolbar"><button class="btn-link" id="chatCopy">Copy essay</button><button class="btn-link" id="chatUndo">Undo last change</button><button class="btn-link" id="chatRescore">Edit and re-score</button></div>
