@@ -590,7 +590,7 @@ CHAT_SCHEMA = {
         "edit": {"type": "boolean", "description": "True when the message asks for a change to the essay"},
         "revised_essay": {"type": "string", "description": "The full essay with the change made, paragraphs separated by blank lines; empty when edit is false"},
         "changes": {"type": "array", "items": {"type": "string"}, "description": "Each change in a few plain words, e.g. 'Opened on the exploding dumpling'; empty when edit is false"},
-        "aspect": {"type": "string", "description": "The part or quality the student wants improved, in a few words, e.g. 'the hook (first two or three sentences)' or 'the ending'; empty only when the change is a fact or correction the student supplied, where quality is not the point"},
+        "aspect": {"type": "string", "description": "The part or quality the student wants improved, in a few words, e.g. 'the hook (first two or three sentences)' or 'the ending'; empty when the student asked for a fact, a correction, or a mechanical change such as a word count or tense rather than a quality gain"},
         "category": {"type": "string", "enum": CATEGORIES + [""], "description": "The rubric category the aspect falls under, or empty when none fits"},
         "target": {"type": "integer", "description": "The score out of 10 the student asked for, e.g. 10 for 'a 10/10 hook'; 0 when they named none"},
         "questions": {

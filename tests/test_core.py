@@ -140,6 +140,8 @@ class FakeLLM:
             new_first = "Ever since I was little" not in prompt.split("<draft_1>")[1].split("</draft_1>")[0]
             if self.aspect_mode == "position":
                 s1, s2, w = 8, 4, "1"
+            elif self.aspect_mode == "tie":
+                s1, s2, w = 6, 6, "1"
             else:
                 new, old = (8, 4) if self.aspect_mode == "new" else (4, 8)
                 s1, s2 = (new, old) if new_first else (old, new)

@@ -80,11 +80,18 @@ def test_facts_the_student_typed_in_chat_count_as_facts(fake):
     assert not t["passed"] and any("adds facts" in f for f in t["checks"]["failures"])
 
 
-def test_fact_correction_skips_the_rating(fake):
+def test_fact_correction_is_still_rated_as_a_whole_and_may_tie(fake):
     fake.chat_aspect, fake.chat_category, fake.chat_target = "", "", 0
+    fake.aspect_mode = "tie"
     t = ch.chat(ESSAY, ESSAY, "It was my grandfather who moved to Flushing, not my grandmother")
-    assert t["passed"] and t["rating"] is None
-    assert not any("score_1" in c for c in fake.calls)
+    assert t["passed"] and t["rating"]["aspect"] == "the essay as a whole" and t["rating"]["before"] == t["rating"]["after"]
+    assert sum("score_1" in c for c in fake.calls) == 2
+
+
+def test_a_tie_on_a_requested_improvement_is_not_an_improvement(fake):
+    fake.aspect_mode = "tie"
+    t = ch.chat(ESSAY, ESSAY, HOOK, max_rounds=1)
+    assert not t["passed"] and any("did not score" in f for f in t["checks"]["failures"])
 
 
 def test_failed_rating_is_reported_not_fatal(fake):

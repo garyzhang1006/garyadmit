@@ -24,6 +24,7 @@ from .revise import BRACKET, _name_drafts, diff_segments, fidelity, gates, revie
 MAX_TURNS = 8  # the most recent messages the editor sees; every student message still counts as a fact
 MAX_TURN_CHARS = 1500
 NAMES = ("the previous version", "the new version")
+WHOLE = "the essay as a whole"  # rated when the student asked for a fact or mechanical change, not a quality gain
 
 
 def _norm(text: str) -> str:
@@ -72,23 +73,25 @@ def _questions(raw: dict, draft: str) -> list[dict]:
 
 def _evaluate(original: str, facts: str, base: str, raw: dict, meta: dict, model: str) -> dict:
     draft = _norm(raw.get("revised_essay") if raw.get("edit") else "")
-    aspect = (raw.get("aspect") or "").strip()
-    category = raw.get("category") if raw.get("category") in rubric.CATEGORIES else ""
+    # Every edit is rated, so the editor cannot skip the judge by leaving the aspect empty; only a
+    # requested quality gain has to score higher, while a fact or mechanical change only must not score lower.
+    asked = (raw.get("aspect") or "").strip()
+    aspect = asked or WHOLE
+    category = raw.get("category") if asked and raw.get("category") in rubric.CATEGORIES else ""
     fails = gates(original, draft, meta, base=base)
     fid = rating = None
     if draft:
         with ThreadPoolExecutor(max_workers=2) as pool:
             f_fid = pool.submit(fidelity, facts, draft, model)
-            f_rate = pool.submit(rate, base, draft, meta, aspect, category, model) if aspect else None
+            f_rate = pool.submit(rate, base, draft, meta, aspect, category, model)
             try:
                 fid = f_fid.result()
             except llm.LLMError as err:
                 fails.append(f"The fact check could not run, so invented details may have slipped in: {err}")
-            if f_rate:
-                try:
-                    rating = f_rate.result()
-                except llm.LLMError as err:
-                    fails.append(f"The blind rating could not run, so there is no before and after score: {err}")
+            try:
+                rating = f_rate.result()
+            except llm.LLMError as err:
+                fails.append(f"The blind rating could not run, so there is no before and after score: {err}")
     if fid and fid["invented"]:
         fails.append("The new version adds facts that neither your essay nor this chat states: "
                      + "; ".join(f'"{i["text"]}" ({i["why_new"]})' for i in fid["invented"])
@@ -98,8 +101,8 @@ def _evaluate(original: str, facts: str, base: str, raw: dict, meta: dict, model
                      + "; ".join(f'"{a["bracket"]}" ({a["why"]})' for a in fid["bracket_assumptions"]) + ". Ask without assuming it.")
     if fid and fid["voice_drift"].get("level") == "high":
         fails.append(f"The new version no longer sounds like the same writer: {fid['voice_drift'].get('evidence', '')}")
-    if rating and rating["after"] <= rating["before"]:
-        fails.append(f"The blind judge did not score {aspect} higher after this change "
+    if rating and (rating["after"] < rating["before"] or (asked and rating["after"] == rating["before"])):
+        fails.append(f"The blind judge did not score {aspect} {'higher' if asked else 'as high'} after this change "
                      f"({_num(rating['before'])} → {_num(rating['after'])}). Its reason: {rating['why_after']}")
     if rating and rating["overall"] == "worse":
         fails.append(f"The blind judge preferred the whole essay before this change, in both orders. Its reason: {rating['reason']}")
@@ -168,8 +171,8 @@ def chat(
             say("Answered without changing the essay")
             return _result(message, base, {"draft": "", "reply": (raw.get("reply") or "").strip(), "changes": [], "questions": [],
                                            "failures": [], "fidelity": None, "rating": None, "target": 0}, [], usage_before, model)
-        say("Checking it: invented facts, mechanical checks" + (f", and a blind before-and-after rating of {raw['aspect'].strip()}"
-                                                                 if (raw.get("aspect") or "").strip() else ""))
+        say("Checking it: invented facts, mechanical checks, and a blind before-and-after rating of "
+            + ((raw.get("aspect") or "").strip() or WHOLE))
         rnd = {**_evaluate(original, facts, base, raw, meta, model), "round": n}
         rounds.append(rnd)
         if not rnd["failures"]:
