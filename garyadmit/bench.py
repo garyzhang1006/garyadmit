@@ -26,8 +26,9 @@ from pathlib import Path
 from typing import Callable
 
 from . import llm
-from .corpus import GRADE_LEVEL, TIER_LEVEL, Anchor, Corpus, load_anchors
+from .corpus import GRADE_LEVEL, TIER_LEVEL, Anchor, Corpus, Essay, load_anchors
 from .review import get_corpus, review
+from .revise import diff_segments, gates, judge, polish, revise
 
 BENCH_DIR = Path.home() / ".garyadmit" / "bench"
 OFFICE_SOURCES = {"jhu", "emory", "tufts", "connecticut", "hamilton"}
@@ -229,4 +230,117 @@ def run(*, full: bool = False, n_rated: int = 8, n_pairs: int = 2, n_tier: int =
               "metrics": m, "verdicts": verdicts(m), "results": results, "usage": dict(llm.usage)}
     BENCH_DIR.mkdir(parents=True, exist_ok=True)
     (BENCH_DIR / (dt.datetime.now().strftime("%Y%m%d-%H%M%S") + ".json")).write_text(json.dumps(report, indent=1))
+    return report
+
+
+# ---- revisions -------------------------------------------------------------
+# Does `garyadmit revise` make essays better, or does the judge just like Claude's
+# prose? Each essay gets a revision (no bracketed questions, so no new details can
+# help it) and a polish-only rewrite by the same model under the same voice rules.
+# The revision has to beat the original clearly more often than polish does, and
+# beat the polish head to head.
+
+LOW_GRADE_MAX = GRADE_LEVEL["B+"]
+
+
+def sample_revise(corpus: Corpus, n: int = 8, seed: str = "") -> list[tuple[str, Essay]]:
+    """n personal statements: mostly essays published as weak or graded B+ and below,
+    plus a few admissions-office exemplars to see whether a strong essay gets churned."""
+    hs = lambda s: _h(seed + s)
+    fits = lambda e: e.essay_type == "personal" and 250 <= len(e.text.split()) <= 650
+    low = sorted((e for e in corpus.essays if fits(e) and (e.tier == "weak" or GRADE_LEVEL.get(e.grade, 99) <= LOW_GRADE_MAX)),
+                 key=lambda e: hs("rv" + e.id))
+    top = sorted((e for e in corpus.essays if fits(e) and e.source in OFFICE_SOURCES), key=lambda e: hs("rx" + e.id))
+    n_top = min(2, n // 3, len(top))
+    return [("low", e) for e in low[:n - n_top]] + [("exemplar", e) for e in top[:n_top]]
+
+
+def revise_metrics(rows: list[dict]) -> dict:
+    ok = [r for r in rows if not r.get("error")]
+    low = [r for r in ok if r["kind"] == "low"]
+    ex = [r for r in ok if r["kind"] == "exemplar"]
+    rate = lambda xs, key, val="better": round(sum(r[key] == val for r in xs) / len(xs), 3) if xs else None
+    mean = lambda xs, key: round(statistics.mean(r[key] for r in xs), 3) if xs else None
+    return {
+        "n": len(low), "n_exemplar": len(ex), "errors": len(rows) - len(ok),
+        "rev_beats_orig": rate(low, "final_verdict"),
+        "rev_beats_orig_first_try": rate(low, "first_verdict"),
+        "rev_verified": rate(low, "verified", True),
+        "polish_beats_orig": rate(low, "polish_verdict"),
+        "rev_beats_polish": rate(low, "rev_vs_polish"),
+        "polish_beats_rev": rate(low, "rev_vs_polish", "worse"),
+        "voice_better": round(sum(r["voice_share"] > 0.5 for r in low) / len(low), 3) if low else None,
+        "invented_rate": round(sum(r["invented"] > 0 for r in low) / len(low), 3) if low else None,
+        "mean_new_share": mean(low, "new_share"),
+        "mean_polish_new_share": mean(low, "polish_new_share"),
+        "exemplar_rev_beats_orig": rate(ex, "final_verdict"),
+        "exemplar_mean_new_share": mean(ex, "new_share"),
+    }
+
+
+def revise_verdicts(m: dict) -> list[str]:
+    if not m["n"]:
+        return ["No weak or low-graded essays were revised; nothing to report."]
+    pct = lambda x: "n/a" if x is None else f"{x:.0%}"
+    out = [
+        f"Revisions beat the original in both orders on {pct(m['rev_beats_orig'])} of {m['n']} essays "
+        f"({pct(m['rev_beats_orig_first_try'])} on the first try); polish-only rewrites by the same model did on {pct(m['polish_beats_orig'])}.",
+        f"Head to head, revisions beat the polish-only rewrite in both orders on {pct(m['rev_beats_polish'])} and lost on {pct(m['polish_beats_rev'])}.",
+        f"The judge said the revision sounds more like one specific teenager on {pct(m['voice_better'])}.",
+        f"Final drafts with an invented fact: {pct(m['invented_rate'])}. Share of text new or moved: "
+        f"revisions {pct(m['mean_new_share'])}, polish {pct(m['mean_polish_new_share'])}.",
+    ]
+    if m["n_exemplar"]:
+        out.append(f"On {m['n_exemplar']} admissions-office exemplar(s), revisions beat the original on "
+                   f"{pct(m['exemplar_rev_beats_orig'])} and changed {pct(m['exemplar_mean_new_share'])} of the text.")
+    if m["errors"]:
+        out.append(f"{m['errors']} essay(s) failed with an error and are left out.")
+    gain = (m["rev_beats_orig"] or 0) - (m["polish_beats_orig"] or 0)
+    passed = gain >= 0.25 and (m["rev_beats_polish"] or 0) > (m["polish_beats_rev"] or 0)
+    out.append(("PASS: " if passed else "FAIL: ") + f"revisions beat the original {gain:+.0%} more often than polish alone"
+               + (" and beat polish head to head." if passed else ", which is not enough to say the gain is more than polish."))
+    return out
+
+
+def run_revise(*, n: int = 8, seed: str = "", model: str | None = None, corpus_path: str | None = None, workers: int = 2,
+               progress: Callable[[str], None] | None = None) -> dict:
+    say = progress or (lambda s: None)
+    m_ = model or llm.DEFAULT_MODEL
+    items = sample_revise(get_corpus(corpus_path), n, seed)
+    say(f"Revising {len(items)} essays, each against its original and a polish-only rewrite")
+
+    def one(item: tuple[str, Essay]) -> dict:
+        kind, e = item
+        meta = {"prompt": e.prompt or "", "essay_type": "personal", "word_limit": 650, "school": ""}
+        base = {"kind": kind, "id": e.id, "url": e.url, "source": e.source, "tier": e.tier, "grade": e.grade,
+                "words": len(e.text.split())}
+        try:
+            v = revise(e.text, prompt=meta["prompt"], word_limit=650, model=m_, placeholders=False)
+            pol = polish(e.text, meta, m_)
+            j_pol = judge(e.text, pol, meta, m_, names=("the original", "the polished draft"))
+            j_rp = judge(pol, v["draft"], meta, m_, names=("the polished draft", "the revision"))
+            jd, fid = v["checks"]["judge"] or {}, v["checks"]["fidelity"] or {}
+            row = {**base, "first_verdict": v["rounds"][0]["verdict"], "final_verdict": jd.get("verdict"),
+                   "verified": v["verified"], "rounds": len(v["rounds"]), "failures": v["checks"]["failures"],
+                   "polish_verdict": j_pol["verdict"], "rev_vs_polish": j_rp["verdict"],
+                   "voice_share": jd.get("voice_share", 0.0), "voice_vs_polish": j_rp["voice_share"],
+                   "invented": len(fid.get("invented", [])), "voice_drift": (fid.get("voice_drift") or {}).get("level"),
+                   "new_share": v["diff"]["new_share"], "polish_new_share": diff_segments(e.text, pol)["new_share"],
+                   "polish_gate_failures": gates(e.text, pol, meta, placeholders=False),
+                   "why_rev": jd.get("decisive_difference", ""), "why_vs_polish": j_rp["decisive_difference"],
+                   "draft": v["draft"], "polish": pol}
+        except (llm.LLMError, ValueError) as err:
+            row = {**base, "error": str(err)}
+        say(f"{kind:<8} {e.id[:28]:<28} -> " + (row.get("error") or
+            f"vs original {row['final_verdict']} (first try {row['first_verdict']}), polish vs original {row['polish_verdict']}, "
+            f"revision vs polish {row['rev_vs_polish']}"))
+        return row
+
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        rows = list(pool.map(one, items))
+    m = revise_metrics(rows)
+    report = {"created": dt.datetime.now().isoformat(timespec="seconds"), "kind": "revise", "seed": seed, "model": m_,
+              "metrics": m, "verdicts": revise_verdicts(m), "results": rows, "usage": dict(llm.usage)}
+    BENCH_DIR.mkdir(parents=True, exist_ok=True)
+    (BENCH_DIR / ("revise-" + dt.datetime.now().strftime("%Y%m%d-%H%M%S") + ".json")).write_text(json.dumps(report, indent=1))
     return report

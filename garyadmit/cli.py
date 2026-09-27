@@ -142,12 +142,16 @@ def cmd_history(a) -> int:
 
 
 def cmd_bench(a) -> int:
-    from .bench import run
+    from .bench import run, run_revise
 
     try:
-        rep = run(full=a.full, n_rated=a.rated, n_pairs=a.pairs, n_tier=a.tier, workers=a.workers, seed=a.seed, model=a.model,
-                  corpus_path=a.corpus, progress=lambda s: print(f"  · {s}", file=sys.stderr, flush=True))
-    except llm.LLMError as err:
+        if a.revise:
+            rep = run_revise(n=a.revise, seed=a.seed, model=a.model, corpus_path=a.corpus, workers=a.workers,
+                             progress=lambda s: print(f"  · {s}", file=sys.stderr, flush=True))
+        else:
+            rep = run(full=a.full, n_rated=a.rated, n_pairs=a.pairs, n_tier=a.tier, workers=a.workers, seed=a.seed, model=a.model,
+                      corpus_path=a.corpus, progress=lambda s: print(f"  · {s}", file=sys.stderr, flush=True))
+    except (llm.LLMError, FileNotFoundError) as err:
         print(f"garyadmit: {err}", file=sys.stderr)
         return 1
     print("\n".join(rep["verdicts"]))
@@ -208,6 +212,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--tier", type=int, default=5, help="essays each from exemplar, weak, and graded sets (default 5)")
     p.add_argument("--workers", type=int, default=3)
     p.add_argument("--seed", default="", help="pick a different sample (confirm tuning on essays it was not tuned on)")
+    p.add_argument("--revise", type=int, default=0, metavar="N",
+                   help="instead, check `garyadmit revise` on N essays against a polish-only control (about 12 calls each)")
     p.add_argument("--model", default=None)
     p.add_argument("--corpus", default=None)
     p.set_defaults(fn=cmd_bench)

@@ -138,3 +138,43 @@ def test_judge_reasons_name_the_drafts_instead_of_positions(fake):
     jd = rv.revise(ESSAY)["checks"]["judge"]
     assert jd["decisive_difference"] == "The revision starts in the kitchen."
     assert jd["keep"][0]["why"] == "Your original has the funniest line"
+
+
+def _bench_corpus():
+    from garyadmit.corpus import Corpus, Essay
+    long = lambda w: (w + " ") * 300
+    return Corpus([
+        Essay(id="w1", text=long("pool"), url="u", source="t", tier="weak"),
+        Essay(id="w2", text=long("shelter"), url="u", source="t", tier="weak"),
+        Essay(id="gc", text=long("robots"), url="u", source="admitreport", tier="example", grade="C"),
+        Essay(id="ga", text=long("violin"), url="u", source="admitreport", tier="example", grade="A"),
+        Essay(id="x1", text=long("kitchen"), url="u", source="jhu", tier="exemplar"),
+        Essay(id="short", text="too short " * 20, url="u", source="t", tier="weak"),
+        Essay(id="sup", text=long("why"), url="u", source="t", tier="weak", essay_type="supplement"),
+    ])
+
+
+def test_revise_bench_sample_is_deterministic_and_filtered():
+    from garyadmit import bench
+    got = bench.sample_revise(_bench_corpus(), 3, seed="s")
+    assert got == bench.sample_revise(_bench_corpus(), 3, seed="s")
+    assert [kind for kind, _ in got].count("exemplar") == 1 and len(got) == 3
+    ids = {e.id for _, e in got}
+    assert not ids & {"ga", "short", "sup"}  # A-graded, too short, not a personal statement
+
+
+def test_revise_bench_metrics_and_verdicts():
+    from garyadmit import bench
+    rows = [{"kind": "low", "first_verdict": "better", "final_verdict": "better", "verified": True, "polish_verdict": "split",
+             "rev_vs_polish": "better", "voice_share": 1.0, "invented": 0, "new_share": 0.5, "polish_new_share": 0.1},
+            {"kind": "low", "first_verdict": "split", "final_verdict": "better", "verified": True, "polish_verdict": "worse",
+             "rev_vs_polish": "better", "voice_share": 0.5, "invented": 0, "new_share": 0.4, "polish_new_share": 0.1},
+            {"kind": "exemplar", "first_verdict": "split", "final_verdict": "split", "verified": False, "polish_verdict": "split",
+             "rev_vs_polish": "split", "voice_share": 0.5, "invented": 0, "new_share": 0.1, "polish_new_share": 0.05},
+            {"kind": "low", "error": "boom"}]
+    m = bench.revise_metrics(rows)
+    assert m["n"] == 2 and m["errors"] == 1 and m["n_exemplar"] == 1
+    assert m["rev_beats_orig"] == 1.0 and m["rev_beats_orig_first_try"] == 0.5 and m["polish_beats_orig"] == 0.0
+    assert m["rev_beats_polish"] == 1.0 and m["exemplar_rev_beats_orig"] == 0.0
+    lines = bench.revise_verdicts(m)
+    assert any("polish" in line for line in lines) and lines[-1].startswith("PASS")
