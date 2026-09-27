@@ -632,7 +632,8 @@ def chat_prompt(original: str, draft: str, message: str, meta: dict, lint_summar
     parts.append(f"The student's message:\n<request>\n{fence(message)}\n</request>")
     if previous:
         parts.append("Your previous attempt at this message failed the checks below. Fix every one unless the student's message asks "
-                     f"for exactly that thing, keep what worked, and do not introduce new problems.\n{fence(feedback)}\n"
+                     "for exactly that thing, keep what worked, and do not introduce new problems. The student never saw that attempt, "
+                     f"so write the reply about how your new version differs from the current draft.\n{fence(feedback)}\n"
                      f"<previous_attempt>\n{fence(previous)}\n</previous_attempt>")
     return "\n\n".join(parts)
 
