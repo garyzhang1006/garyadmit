@@ -484,7 +484,11 @@ async function startRevision() {
     const v = await pollJob(job, j => mount($("#betterBody"), html`<ol class="ministeps">${j.progress.map(p => html`<li>${p}</li>`)}${j.status === "running" ? html`<li class="wait">Working</li>` : ""}</ol>`));
     r.revision = v;
     if (current === r) mount($("#better"), revisionHtml(v));
-    if (current === r && !(r.chat || []).some(applied)) { versions = [v.draft]; showWorking(); }
+    if (current === r) {
+      // Until the chat has changed anything, it continues from the newest edit.
+      if (versions.length === 1) { versions = [v.draft]; showWorking(); }
+      saveWorking(r);
+    }
   } catch (e) {
     if (current === r) mount($("#better"), betterIntro(String(e)));
   }
@@ -498,9 +502,29 @@ const SUGGEST = [
   ["Does this sound like me?", "Does this sound like a real 17-year-old wrote it? Point to the lines that don't."],
 ];
 let versions = [];  // working drafts, oldest first; the last is on screen and is what the next message edits
-let chatBusy = null;  // the review whose chat request is running
+let chatBusy = null;  // key() of the review whose chat request is running
 const working = () => versions[versions.length - 1];
 const num = x => Number.isInteger(x) ? String(x) : x.toFixed(1);
+// Reopening a saved review loads a fresh copy, so reviews are matched by id rather than by object.
+const key = r => (r && r.id) || r;
+
+// Undo and "Use this version" leave no turn on the server, so this browser remembers the working essay,
+// valid only while the saved review has the same turns and revision it had then.
+function saveWorking(r) {
+  if (!r.id) return;
+  try {
+    localStorage.setItem("ga-working-" + r.id, JSON.stringify({ turns: (r.chat || []).length,
+      revision: (r.revision && r.revision.created) || "", working: working() }));
+  } catch (err) {}
+}
+function savedWorking(r) {
+  if (!r.id) return null;
+  try {
+    const s = JSON.parse(localStorage.getItem("ga-working-" + r.id) || "null");
+    return s && s.turns === (r.chat || []).length && s.revision === ((r.revision && r.revision.created) || "")
+      && typeof s.working === "string" ? s.working : null;
+  } catch (err) { return null; }
+}
 
 function ratingHtml(g) {
   if (!g) return "";
@@ -543,7 +567,8 @@ function threadHtml(r, pending) {
 function chipsHtml(r) {
   const turns = r.chat || [];
   if (!turns.length) return html`${SUGGEST.map(([label, say]) => html`<button class="btn-link chip" data-say="${say}">${label}</button>`)}`;
-  const last = turns[turns.length - 1], g = applied(last) && last.rating;
+  // The judge's note describes that change's draft, so it is offered only while that draft is on screen.
+  const last = turns[turns.length - 1], g = applied(last) && last.draft === working() && last.rating;
   return g && g.target && g.after < g.target && g.to_ten
     ? html`<button class="btn-link chip" data-say="${`Push ${g.aspect} closer to a ${g.target}.`}" data-advice="${g.to_ten}">Push ${g.aspect} closer to ${g.target}</button>`
     : html``;
@@ -574,32 +599,49 @@ function showWorking(turnIndex) {
   const lim = r.meta && r.meta.word_limit;
   $("#chatWc").textContent = t ? `what message ${turnIndex + 1} changed`
     : `${words(working())}${lim ? " / " + lim : ""} words` + (versions.length > 1 ? ` · version ${versions.length}` : "");
-  $("#chatUndo").disabled = versions.length < 2 || chatBusy === r;
+  const busy = chatBusy === key(r);
+  $("#chatUndo").disabled = versions.length < 2 || busy;
+  if (!busy) mount($("#chips"), chipsHtml(r));
 }
 
 function initChat(r) {
-  // Start from the edited essay when there is one, with every saved change on top of it.
-  versions = [(r.revision && r.revision.draft) || r.essay];
-  for (const t of r.chat || []) {
+  // Replay the saved turns in order. Ones sent before the latest edit ran started from the original essay,
+  // and the chat moved to that edit only if they had changed nothing.
+  const turns = r.chat || [], rev = r.revision;
+  const cut = rev ? turns.findIndex(t => !(t.created < rev.created)) : 0;
+  const early = cut < 0 ? turns.length : cut;
+  const replay = ts => ts.forEach(t => {
     if (t.edited && t.base !== working()) versions.push(t.base);
     if (applied(t)) versions.push(t.draft);
+  });
+  versions = [r.essay];
+  replay(turns.slice(0, early));
+  if (rev && versions.length === 1) versions = [rev.draft];
+  replay(turns.slice(early));
+  const w = savedWorking(r);
+  if (w != null) {
+    const i = versions.lastIndexOf(w);
+    versions = i >= 0 ? versions.slice(0, i + 1) : [...versions, w];
   }
   showWorking();
 }
 
 async function sendChat(text, advice) {
   const r = current, message = (text || "").trim();
-  if (!message || !r || chatBusy === r) return;
-  chatBusy = r;
+  if (!message || !r || chatBusy === key(r)) return;
+  chatBusy = key(r);
   const pending = { message, steps: [] };
+  // The student may reopen this review mid-request, which puts a fresh copy on screen; update that copy too.
+  const live = () => (current && key(current) === key(r) ? current : null);
   const paint = () => {
-    if (current !== r) return;
-    mount($("#thread"), threadHtml(r, pending));
+    const view = live();
+    if (!view) return;
+    mount($("#thread"), threadHtml(view, pending));
     $("#thread").scrollTop = $("#thread").scrollHeight;
+    mount($("#chips"), html``);
+    $("#chatInput").disabled = $("#chatSend").disabled = $("#chatUndo").disabled = true;
   };
   $("#chatInput").value = "";
-  $("#chatInput").disabled = $("#chatSend").disabled = $("#chatUndo").disabled = true;
-  mount($("#chips"), html``);
   paint();
   const body = r.id ? { review_id: r.id } : { essay: r.essay, ...r.meta };
   Object.assign(body, { message, advice: advice || "", draft: working(), history: (r.chat || []).flatMap(t => [{ role: "user", text: t.message },
@@ -608,19 +650,22 @@ async function sendChat(text, advice) {
   try {
     const job = await startJob("/api/chat", body);
     const t = await pollJob(job, j => { pending.steps = j.progress; paint(); });
-    r.chat = [...(r.chat || []), t];
-    if (current === r && applied(t)) versions.push(t.draft);
+    // A copy reopened after the server saved this turn already has it.
+    const has = x => (x.chat || []).some(c => c.created === t.created && c.message === t.message);
+    for (const x of new Set([r, live()])) if (x && !has(x)) x.chat = [...(x.chat || []), t];
+    if (live() && applied(t) && working() !== t.draft) versions.push(t.draft);
   } catch (e) {
     failed = true;
     pending.error = String(e);
     paint();
   } finally {
-    if (chatBusy === r) chatBusy = null;
-    if (current === r) {
-      if (!failed) { mount($("#thread"), threadHtml(r)); $("#thread").scrollTop = $("#thread").scrollHeight; }
-      mount($("#chips"), chipsHtml(r));
+    if (chatBusy === key(r)) chatBusy = null;
+    const view = live();
+    if (view) {
+      if (!failed) { mount($("#thread"), threadHtml(view)); $("#thread").scrollTop = $("#thread").scrollHeight; }
       $("#chatInput").disabled = $("#chatSend").disabled = false;
       if (failed) $("#chatInput").value = message;
+      saveWorking(view);
       showWorking();
     }
   }
@@ -768,8 +813,12 @@ document.addEventListener("click", e => {
   const act = e.target.closest("[data-act]");
   const turn = act && current && (current.chat || [])[+act.dataset.turn];
   if (turn && act.dataset.act === "diff") showWorking($("#chatDraft").dataset.turn === act.dataset.turn ? null : +act.dataset.turn);
-  if (turn && act.dataset.act === "use" && chatBusy !== current) { versions.push(turn.draft); showWorking(); }
-  if (e.target.closest("#chatUndo") && versions.length > 1 && chatBusy !== current) { versions.pop(); showWorking(); }
+  if (turn && act.dataset.act === "use" && chatBusy !== key(current) && turn.draft !== working()) {
+    versions.push(turn.draft); saveWorking(current); showWorking();
+  }
+  if (e.target.closest("#chatUndo") && versions.length > 1 && chatBusy !== key(current)) {
+    versions.pop(); saveWorking(current); showWorking();
+  }
   const chatCopy = e.target.closest("#chatCopy");
   if (chatCopy) {
     navigator.clipboard.writeText(working()).then(() => { chatCopy.textContent = "Copied"; },
