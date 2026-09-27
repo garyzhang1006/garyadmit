@@ -140,9 +140,12 @@ def chat(
     meta: dict | None = None,
     review: dict | None = None,
     model: str | None = None,
+    advice: str = "",
     max_rounds: int = 2,
     progress: Callable[[str], None] | None = None,
 ) -> dict:
+    """`advice` is the judge's note from an earlier turn that the student asked the editor to act on;
+    it steers the editor but, unlike the student's own messages, never counts as a fact."""
     original, base, message = _norm(original), _norm(draft) or _norm(original), _norm(message)
     if not message:
         raise ValueError("Type what you want changed, or ask a question about the essay.")
@@ -167,7 +170,7 @@ def chat(
         try:
             raw = llm.ask_json(rubric.CHAT_SYSTEM,
                                rubric.chat_prompt(original, base, message, meta, lint_text, history[-MAX_TURNS:], context,
-                                                  _feedback(prev) if prev else "", prev["draft"] if prev else ""),
+                                                  _feedback(prev) if prev else "", prev["draft"] if prev else "", _norm(advice)),
                                rubric.CHAT_SCHEMA, model=model)
         except llm.LLMError as err:
             if not rounds:

@@ -544,7 +544,7 @@ function chipsHtml(r) {
   if (!turns.length) return html`${SUGGEST.map(([label, say]) => html`<button class="btn-link chip" data-say="${say}">${label}</button>`)}`;
   const last = turns[turns.length - 1], g = applied(last) && last.rating;
   return g && g.target && g.after < g.target && g.to_ten
-    ? html`<button class="btn-link chip" data-say="${`Push ${g.aspect} closer to a ${g.target}. The judge said: ${g.to_ten}`}">Push ${g.aspect} closer to ${g.target}</button>`
+    ? html`<button class="btn-link chip" data-say="${`Push ${g.aspect} closer to a ${g.target}.`}" data-advice="${g.to_ten}">Push ${g.aspect} closer to ${g.target}</button>`
     : html``;
 }
 
@@ -582,7 +582,7 @@ function initChat(r) {
   showWorking();
 }
 
-async function sendChat(text) {
+async function sendChat(text, advice) {
   const r = current, message = (text || "").trim();
   if (!message || chatBusy || !r) return;
   chatBusy = true;
@@ -597,7 +597,7 @@ async function sendChat(text) {
   mount($("#chips"), html``);
   paint();
   const body = r.id ? { review_id: r.id } : { essay: r.essay, ...r.meta };
-  Object.assign(body, { message, draft: working(), history: (r.chat || []).flatMap(t => [{ role: "user", text: t.message },
+  Object.assign(body, { message, advice: advice || "", draft: working(), history: (r.chat || []).flatMap(t => [{ role: "user", text: t.message },
     { role: "assistant", text: t.reply + (t.edited && !t.passed ? " (Not applied: it failed the checks, so the draft stayed as it was.)" : "") }]) });
   let failed = false;
   try {
@@ -759,7 +759,7 @@ document.addEventListener("click", e => {
     window.scrollTo({ top: 0 });
   }
   if (e.target.closest("#chatSend")) sendChat($("#chatInput").value);
-  const chip = e.target.closest("[data-say]"); if (chip) sendChat(chip.dataset.say);
+  const chip = e.target.closest("[data-say]"); if (chip) sendChat(chip.dataset.say, chip.dataset.advice);
   const act = e.target.closest("[data-act]");
   const turn = act && current && (current.chat || [])[+act.dataset.turn];
   if (turn && act.dataset.act === "diff") showWorking($("#chatDraft").dataset.turn === act.dataset.turn ? null : +act.dataset.turn);

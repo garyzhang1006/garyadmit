@@ -106,6 +106,12 @@ def test_problems_already_in_the_working_draft_are_not_blamed_on_the_edit(fake):
     assert [i["text"] for i in t["checks"]["inherited"]] == ["not once"]
 
 
+def test_judge_advice_reaches_the_editor_but_never_counts_as_a_fact(fake):
+    advice = "Name the opera she played, like Farewell My Concubine."
+    ch.chat(ESSAY, ESSAY, "Push the hook closer to a 10.", advice=advice)
+    assert advice in fake.chat_prompts[0] and advice not in fake.fidelity_prompts[0].split("</original>")[0]
+
+
 def test_failed_rating_is_reported_not_fatal(fake):
     fake.fail_rating = True
     t = ch.chat(ESSAY, ESSAY, HOOK, max_rounds=1)
@@ -166,8 +172,9 @@ def test_server_chat_job_writes_the_turn_back_and_refuses_cross_site(fake):
         assert c["result"]["edited"] and c["result"]["rating"]["after"] == 8
         saved = json.loads(urllib.request.urlopen(f"{base}/api/history/{r['id']}").read())
         assert [t["draft"] for t in saved["chat"]] == [c["result"]["draft"]]
-        plain = wait(post("/api/chat", {"essay": ESSAY, "message": HOOK, "history": "not a list"}))
+        plain = wait(post("/api/chat", {"essay": ESSAY, "message": HOOK, "history": "not a list", "advice": "Name the opera."}))
         assert plain["status"] == "done" and plain["result"]["base"] == ESSAY.strip()
+        assert "Name the opera." in fake.chat_prompts[-1]
         missing = wait(post("/api/chat", {"review_id": "20000101-000000", "message": HOOK}))
         assert missing["status"] == "error" and "not found" in missing["error"]
         with pytest.raises(urllib.error.HTTPError) as err:

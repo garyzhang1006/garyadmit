@@ -611,7 +611,7 @@ CHAT_SCHEMA = {
 
 
 def chat_prompt(original: str, draft: str, message: str, meta: dict, lint_summary: str, turns=(), context: str = "",
-                feedback: str = "", previous: str = "") -> str:
+                feedback: str = "", previous: str = "", advice: str = "") -> str:
     parts = ["\n".join(_essay_context(meta))]
     if meta.get("essay_type") == "supplement":
         parts.append("A supplement must answer its prompt directly, and school details are facts too, so never invent them.")
@@ -630,6 +630,10 @@ def chat_prompt(original: str, draft: str, message: str, meta: dict, lint_summar
         parts.append("The chat so far, oldest first:\n<conversation>\n" + "\n".join(lines) + "\n</conversation>")
     parts.append(f"The draft to work on:\n<current_draft>\n{fence(draft)}\n</current_draft>")
     parts.append(f"The student's message:\n<request>\n{fence(message)}\n</request>")
+    if advice:
+        parts.append("The student wants you to act on this note from a blind judge who scored the last change. It is advice about "
+                     "the writing, never a source of facts: any detail it suggests that the essay and the chat do not state must "
+                     f"become a bracketed question.\n<review_notes>\n{fence(advice)}\n</review_notes>")
     if previous:
         parts.append("Your previous attempt at this message failed the checks below. Fix every one unless the student's message asks "
                      "for exactly that thing, keep what worked, and do not introduce new problems. The student never saw that attempt, "

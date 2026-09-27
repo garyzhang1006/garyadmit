@@ -84,7 +84,7 @@ def _do_chat(req: dict, progress) -> dict:
     original = saved["essay"] if saved else str(req.get("essay") or "")
     history = req.get("history") if isinstance(req.get("history"), list) else []
     result = chat(original, str(req.get("draft") or original), str(req.get("message") or ""),
-                  history=history, meta=meta, review=saved, progress=progress)
+                  history=history, meta=meta, review=saved, advice=str(req.get("advice") or "")[:2000], progress=progress)
     if path:
         with _lock:  # the same lock as revision write-backs, so the two never interleave
             current = json.loads(path.read_text())
