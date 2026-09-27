@@ -17,7 +17,7 @@ import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable
 
-from . import llm, rubric
+from . import llm, rubric, scoring
 from .lint import lint, summarize_for_prompt, word_count
 from .revise import BRACKET, _name_drafts, diff_segments, fidelity, gates, review_context
 
@@ -80,6 +80,7 @@ def _evaluate(original: str, facts: str, base: str, raw: dict, meta: dict, model
     category = raw.get("category") if asked and raw.get("category") in rubric.CATEGORIES else ""
     fails = gates(original, draft, meta, base=base)
     fid = rating = None
+    inherited = []
     if draft:
         with ThreadPoolExecutor(max_workers=2) as pool:
             f_fid = pool.submit(fidelity, facts, draft, model)
@@ -92,6 +93,11 @@ def _evaluate(original: str, facts: str, base: str, raw: dict, meta: dict, model
                 rating = f_rate.result()
             except llm.LLMError as err:
                 fails.append(f"The blind rating could not run, so there is no before and after score: {err}")
+    if fid:
+        # Details the working draft already carried (say, from an unverified revision) are not this edit's doing.
+        inherited = [i for i in fid["invented"] if scoring.locate(base, i["text"])]
+        fid = {**fid, "invented": [i for i in fid["invented"] if i not in inherited],
+               "bracket_assumptions": [a for a in fid["bracket_assumptions"] if a["bracket"] not in base]}
     if fid and fid["invented"]:
         fails.append("The new version adds facts that neither your essay nor this chat states: "
                      + "; ".join(f'"{i["text"]}" ({i["why_new"]})' for i in fid["invented"])
@@ -107,7 +113,8 @@ def _evaluate(original: str, facts: str, base: str, raw: dict, meta: dict, model
     if rating and rating["overall"] == "worse":
         fails.append(f"The blind judge preferred the whole essay before this change, in both orders. Its reason: {rating['reason']}")
     return {"draft": draft, "reply": (raw.get("reply") or "").strip(), "changes": [str(c) for c in raw.get("changes", []) if str(c).strip()],
-            "questions": _questions(raw, draft), "failures": fails, "fidelity": fid, "rating": rating, "target": _target(raw.get("target"))}
+            "questions": _questions(raw, draft), "failures": fails, "fidelity": fid, "inherited": inherited, "rating": rating,
+            "target": _target(raw.get("target"))}
 
 
 def _target(x) -> int:
@@ -170,7 +177,8 @@ def chat(
         if n == 1 and not raw.get("edit"):
             say("Answered without changing the essay")
             return _result(message, base, {"draft": "", "reply": (raw.get("reply") or "").strip(), "changes": [], "questions": [],
-                                           "failures": [], "fidelity": None, "rating": None, "target": 0}, [], usage_before, model)
+                                           "failures": [], "fidelity": None, "inherited": [], "rating": None, "target": 0},
+                           [], usage_before, model)
         say("Checking it: invented facts, mechanical checks, and a blind before-and-after rating of "
             + ((raw.get("aspect") or "").strip() or WHOLE))
         rnd = {**_evaluate(original, facts, base, raw, meta, model), "round": n}
@@ -201,7 +209,8 @@ def _result(message: str, base: str, best: dict, rounds: list[dict], usage_befor
         "questions": best["questions"],
         "rating": rating,
         "passed": not best["failures"],
-        "checks": {"failures": best["failures"], "fidelity": best["fidelity"], "word_count": word_count(draft)},
+        "checks": {"failures": best["failures"], "fidelity": best["fidelity"], "inherited": best["inherited"],
+                   "word_count": word_count(draft)},
         "rounds": [{"round": r["round"], "failures": r["failures"], "invented": len((r["fidelity"] or {}).get("invented", [])),
                     "before": (r["rating"] or {}).get("before"), "after": (r["rating"] or {}).get("after")} for r in rounds],
         "usage": {k: round(llm.usage[k] - usage_before.get(k, 0), 4) for k in llm.usage},

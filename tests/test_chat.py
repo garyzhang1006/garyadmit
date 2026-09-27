@@ -94,6 +94,18 @@ def test_a_tie_on_a_requested_improvement_is_not_an_improvement(fake):
     assert not t["passed"] and any("did not score" in f for f in t["checks"]["failures"])
 
 
+def test_problems_already_in_the_working_draft_are_not_blamed_on_the_edit(fake):
+    base = CHAT_DRAFT.replace("She never corrected me.", "She never corrected me — not once — in a tapestry of patience.")
+    new = base.replace("My grandmother ate them anyway.", "My grandmother ate them.")
+    fake.chat_drafts = [new]
+    fake.invented = [{"text": "not once", "why_new": "the original never says this"}]
+    fake.chat_aspect, fake.chat_category, fake.chat_target = "", "", 0
+    fake.aspect_mode = "tie"
+    t = ch.chat(ESSAY, base, "Cut 'anyway' from the first paragraph")
+    assert t["passed"], t["checks"]["failures"]
+    assert [i["text"] for i in t["checks"]["inherited"]] == ["not once"]
+
+
 def test_failed_rating_is_reported_not_fatal(fake):
     fake.fail_rating = True
     t = ch.chat(ESSAY, ESSAY, HOOK, max_rounds=1)
