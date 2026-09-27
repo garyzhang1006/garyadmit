@@ -71,12 +71,13 @@ Below the revision there is a chat box. Type what you want changed, such as "mak
 
 Each change goes through the same checks as a revision, adapted to the chat:
 
-- The editor changes only what you asked about and keeps your voice and your facts. Anything you type in the chat counts as a fact you supplied, so you can answer a bracketed question by typing the answer.
-- The invented-fact check compares the new version with your original essay plus everything you typed in the chat.
-- A blind judge scores the part you asked about from 1 to 10, before and after, in both orders, without seeing your request or which version is new. It also says which version makes the stronger essay overall and what would get that part to a 10. On its scale a 10 is the best essay in a reading season, so a "10/10" request usually comes back with a score and a note on what is still missing, often a detail only you know.
-- A change that the judge does not score higher, that makes the whole essay worse, or that fails a check gets one retry with the reasons, and any failure left over is shown under the reply.
+- The editor changes only what you asked about and keeps your voice and your facts. Anything you type in the chat counts as a fact you supplied, so you can answer a bracketed question by typing the answer. When the part you named already works and only a detail you have not given would lift it, the editor asks you for that detail and leaves the essay alone.
+- The invented-fact check compares the new version with your original essay plus everything you typed in the chat. A detail that was already in the working essay before your message, for example from the edited essay, gets a note instead of failing the change.
+- A blind judge scores the part you asked about from 1 to 10, before and after, in both orders, without seeing your request or which version is new. A correction or a mechanical change such as a word cut is scored on the essay as a whole. The judge also says which version makes the stronger essay overall and what would get that part to a 10. On its scale a 10 is the best essay in a reading season, so a "10/10" request usually comes back with a score and a note on what is still missing, often a detail only you know.
+- A requested improvement has to score higher than before, and a correction or mechanical change must not score lower. A change that misses that bar, that the judge calls worse in both orders, or that fails a check gets one retry with the reasons. If it still fails, the working essay stays as it was, and the reply lists the reasons with a "Use this version anyway" button.
+- When a change lands short of the score you asked for, a suggestion appears to push that part closer. It hands the judge's note to the editor as advice only: a detail from the note that you have not given comes back as a bracketed question.
 
-A change takes one to two minutes and about four model calls (up to eight with the retry); a question takes one. The conversation is saved with the review.
+A change takes one to three minutes and about four model calls (up to eight with the retry); a question takes one. The conversation is saved with the review.
 
 ## Why the score is hard to inflate
 
