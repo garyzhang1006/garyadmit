@@ -203,6 +203,8 @@ select, input, textarea, button { font: inherit; color: inherit; }
 .draft del { color: var(--red); background: var(--red-soft); text-decoration-thickness: 2px; }
 .draft ins { text-decoration: none; background: var(--green-soft); border-bottom: 2px solid var(--green); }
 mark.ask { background: var(--amber-soft); color: inherit; border-bottom: 2px dashed var(--amber); padding: 0 2px; }
+.why { margin: 8px 0 0; }
+.why > summary { cursor: pointer; font-size: 16px; padding: 10px 0; }
 .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
 .toolbar .on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 #history { display: none; position: absolute; right: 20px; top: 84px; width: min(520px, calc(100vw - 40px)); z-index: 5; max-height: 60vh; overflow: auto; }
@@ -417,7 +419,19 @@ function revisionHtml(v) {
       <div class="eff">${m.reader_effect}</div></div></div>`);
   const qs = v.questions.map(q => html`<div class="issue"><mark class="ask">${q.placeholder}</mark><div class="w">${q.question}</div></div>`);
   const keep = (jd.keep || []).map(k => html`<div class="issue good"><blockquote>${k.quote}</blockquote><div class="w">${k.why}</div></div>`);
-  return html`<h2>How to make it a lot better</h2>
+  // The edited essay comes first and alone; the reasoning stays one click away for anyone who wants it.
+  return html`<h2>Your edited essay</h2>
+    <div class="banner ${v.verified ? "ok" : "no"}">${v.verified
+      ? html`<b>Verified.</b> A blind judge preferred it over your original and over a polish-only rewrite.`
+      : html`<b>Not verified.</b> Treat this as a starting point; the reasons are under "Why these changes".`}
+      ${nq ? html`<br><span class="caption">Replace the ${nq} highlighted bracket${nq > 1 ? "s" : ""} with true details, or cut ${nq > 1 ? "those lines" : "that line"}.</span>` : ""}</div>
+    <div class="panel"><h3><span>Edited essay</span><span>${v.checks.word_count}${v.meta.word_limit ? " / " + v.meta.word_limit : ""} words</span></h3>
+      <div class="toolbar"><button class="btn-link" id="copyDraft">Copy essay</button><button class="btn-link" id="editDraft">Edit and re-score</button>
+        <button class="btn-link on" data-view="clean">Essay</button><button class="btn-link" data-view="changes">Show changes</button></div>
+      <div class="draft" id="draftView">${withAsks(v.draft)}</div>
+    </div>
+    ${qs.length ? html`<div class="panel"><h3><span>Fill in the brackets</span><span>answer from memory, or cut the line</span></h3>${qs}</div>` : ""}
+    <details class="why"><summary>Why these changes</summary>
     ${banner}
     <div class="cols">
       <div>
@@ -431,13 +445,9 @@ function revisionHtml(v) {
       </div>
       <div class="panel"><h3><span>The moves</span><span>biggest first</span></h3>${moves.length ? moves : html`<p class="empty">No moves.</p>`}</div>
     </div>
-    ${qs.length ? html`<div class="panel"><h3><span>Questions only you can answer</span><span>answer from memory, or cut the line</span></h3>${qs}</div>` : ""}
-    <div class="panel"><h3><span>Revised draft</span><span>${v.checks.word_count}${v.meta.word_limit ? " / " + v.meta.word_limit : ""} words · kept ${Math.round(v.diff.kept_share * 100)}% of yours</span></h3>
-      <div class="toolbar"><button class="btn-link on" data-view="changes">Show changes</button><button class="btn-link" data-view="clean">Clean draft</button>
-        <button class="btn-link" id="copyDraft">Copy draft</button><button class="btn-link" id="editDraft">Edit this draft</button></div>
-      <div class="draft" id="draftView">${diffHtml(v.diff)}</div>
-      ${keep.length ? html`<p class="caption">What the judge thought your original did better</p>${keep}` : ""}
-    </div>`;
+    ${keep.length ? html`<div class="panel"><h3>What the judge thought your original did better</h3>${keep}</div>` : ""}
+    <p class="caption">The edit kept ${Math.round(v.diff.kept_share * 100)}% of your words.</p>
+    </details>`;
 }
 
 async function startRevision() {
