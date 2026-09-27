@@ -582,6 +582,59 @@ Rules you never break:
 
 The reply is one to three plain sentences to the student: what you changed and why a reader will feel the difference, or your answer. No flattery and no headings."""
 
+CHAT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "reply": {"type": "string", "description": "One to three plain sentences to the student: what you changed and why it helps, or your answer to their question"},
+        "edit": {"type": "boolean", "description": "True when the message asks for a change to the essay"},
+        "revised_essay": {"type": "string", "description": "The full essay with the change made, paragraphs separated by blank lines; empty when edit is false"},
+        "changes": {"type": "array", "items": {"type": "string"}, "description": "Each change in a few plain words, e.g. 'Opened on the exploding dumpling'; empty when edit is false"},
+        "aspect": {"type": "string", "description": "The part or quality the student wants improved, in a few words, e.g. 'the hook (first two or three sentences)' or 'the ending'; empty only when the change is a fact or correction the student supplied, where quality is not the point"},
+        "category": {"type": "string", "enum": CATEGORIES + [""], "description": "The rubric category the aspect falls under, or empty when none fits"},
+        "target": {"type": "integer", "description": "The score out of 10 the student asked for, e.g. 10 for 'a 10/10 hook'; 0 when they named none"},
+        "questions": {
+            "type": "array",
+            "description": "One entry per bracketed question in the revised essay",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "placeholder": {"type": "string", "description": "The bracketed text exactly as it appears in the revised essay, brackets included"},
+                    "question": {"type": "string", "description": "What the student should answer from memory"},
+                },
+                "required": ["placeholder", "question"],
+            },
+        },
+    },
+    "required": ["reply", "edit", "revised_essay", "changes", "aspect", "category", "target", "questions"],
+}
+
+
+def chat_prompt(original: str, draft: str, message: str, meta: dict, lint_summary: str, turns=(), context: str = "",
+                feedback: str = "", previous: str = "") -> str:
+    parts = ["\n".join(_essay_context(meta))]
+    if meta.get("essay_type") == "supplement":
+        parts.append("A supplement must answer its prompt directly, and school details are facts too, so never invent them.")
+    parts.append(f"Mechanical checks already run on the current draft (facts, not opinions):\n{lint_summary}")
+    if context:
+        parts.append("Notes from two admissions readers who reviewed the student's original essay. Use them where they help.\n"
+                     f"<review_notes>\n{fence(context)}\n</review_notes>")
+    if original.strip() != draft.strip():
+        parts.append("The student's original essay. Its facts, and what the student tells you in this chat, are the only facts you may use.\n"
+                     f"<original>\n{fence(original)}\n</original>")
+    else:
+        parts.append("The current draft is the student's original essay. Its facts, and what the student tells you in this chat, "
+                     "are the only facts you may use.")
+    if turns:
+        lines = [f"{'Student' if t['role'] == 'user' else 'Editor'}: {fence(t['text'])}" for t in turns]
+        parts.append("The chat so far, oldest first:\n<conversation>\n" + "\n".join(lines) + "\n</conversation>")
+    parts.append(f"The draft to work on:\n<current_draft>\n{fence(draft)}\n</current_draft>")
+    parts.append(f"The student's message:\n<request>\n{fence(message)}\n</request>")
+    if previous:
+        parts.append("Your previous attempt at this message failed the checks below. Fix every one unless the student's message asks "
+                     f"for exactly that thing, keep what worked, and do not introduce new problems.\n{fence(feedback)}\n"
+                     f"<previous_attempt>\n{fence(previous)}\n</previous_attempt>")
+    return "\n\n".join(parts)
+
 
 def band(score: float) -> tuple[str, str]:
     """Plain-language meaning of an overall score, tied to the anchors above."""
