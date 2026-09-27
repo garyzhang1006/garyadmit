@@ -754,6 +754,23 @@ document.addEventListener("click", e => {
   }
   if (e.target.closest("#chatSend")) sendChat($("#chatInput").value);
   const chip = e.target.closest("[data-say]"); if (chip) sendChat(chip.dataset.say);
+  const act = e.target.closest("[data-act]");
+  const turn = act && current && (current.chat || [])[+act.dataset.turn];
+  if (turn && act.dataset.act === "diff") showWorking($("#chatDraft").dataset.turn === act.dataset.turn ? null : +act.dataset.turn);
+  if (turn && act.dataset.act === "use" && !chatBusy) { versions.push(turn.draft); showWorking(); }
+  if (e.target.closest("#chatUndo") && versions.length > 1 && !chatBusy) { versions.pop(); showWorking(); }
+  const chatCopy = e.target.closest("#chatCopy");
+  if (chatCopy) {
+    navigator.clipboard.writeText(working()).then(() => { chatCopy.textContent = "Copied"; },
+      () => { chatCopy.textContent = "Copy failed; select the text instead"; });
+  }
+  if (e.target.closest("#chatRescore")) {
+    $("#essay").value = working();
+    try { localStorage.setItem("ga-draft", working()); } catch (err) {}
+    updateCount();
+    show("compose");
+    window.scrollTo({ top: 0 });
+  }
   const row = e.target.closest("#history .row");
   if (row) {
     $("#history").style.display = "none";
