@@ -37,7 +37,47 @@ GRADE_LEVEL = {
     "D+": 48, "D": 44, "D-": 40, "F": 32,
 }
 
-# Hidden anchors are human-rated drafts on a 4-9 scale. level = 10*rating - 5
+# Published essays whose standing is known independently of GaryAdmit: picked by an
+# admissions office, letter-graded by AdmitReport, or published as a weak example.
+# The blind judge agrees with these (5 of 5 clear pairs in testing), so they set the
+# scale. ElevatEd consultant ratings did not (chance-level agreement), so those
+# drafts are only a secondary check in `garyadmit bench`.
+LADDER_TIERS = {"exemplar", "weak"}
+
+
+def ladder_label(e: "Essay") -> str:
+    if e.grade in GRADE_LEVEL:
+        return f"graded {e.grade} by AdmitReport reviewers"
+    if e.tier == "weak":
+        return "published as an example of a weak essay"
+    return f"picked by {e.school or e.source} admissions as a model essay"
+
+
+def pick_ladder(corpus: "Corpus", targets: list[float], essay_type: str, seed_text: str,
+                exclude_text: str = "") -> list["Essay"]:
+    """One known-standing essay per target level, same essay type when one sits within
+    10 points, rotating among near ties by a hash of the essay."""
+    import hashlib
+
+    h = int(hashlib.sha1(seed_text.encode()).hexdigest(), 16)
+    ex = _norm(exclude_text)[:300] if exclude_text else None
+    pool = [e for e in corpus.essays if (e.grade in GRADE_LEVEL or e.tier in LADDER_TIERS)
+            and (not ex or _norm(e.text)[:300] != ex)]
+    chosen: list[Essay] = []
+    for i, t in enumerate(targets):
+        cands = [e for e in pool if e not in chosen]
+        same = [e for e in cands if e.essay_type == essay_type]
+        if same and min(abs(e.level - t) for e in same) <= 10:
+            cands = same
+        if not cands:
+            break
+        best = min(abs(e.level - t) for e in cands)
+        near = sorted((e for e in cands if abs(e.level - t) <= best + 3), key=lambda e: e.id)
+        chosen.append(near[(h >> (8 * i)) % len(near)])
+    return chosen
+
+
+# ElevatEd drafts are consultant-rated on a 4-9 scale. level = 10*rating - 5
 # puts their top drafts (9) level with published exemplars (85) and their
 # median (~6) at the median-applicant band (55). This is an assumption, and
 # `garyadmit bench` reports how the rubric's own scores line up with it.

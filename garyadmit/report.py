@@ -28,7 +28,7 @@ def to_text(r: dict) -> str:
         if r["head_to_head"]:
             bits.append(f"{len(r['head_to_head'])} similar published essays ({h2h_summary(r['head_to_head'])})")
         if cal:
-            bits.append(f"{len(cal)} hidden human-rated essays ({h2h_summary(cal)})")
+            bits.append(f"{len(cal)} essays of known standing ({h2h_summary(cal)})")
         out.append(_wrap(f"Rubric score {r['rubric_score']:.1f} -> final {r['score']:.1f} after blind comparisons against "
                          + " and ".join(bits) + ".", "  "))
     else:
@@ -87,10 +87,13 @@ def to_text(r: dict) -> str:
                 out.append(_wrap(f"Take from it: {h['lesson']}", "         "))
         out.append("")
     if cal:
-        out.append("CALIBRATION VS HUMAN-RATED ESSAYS (blind; expert rating on a 4-9 scale)")
-        for c in sorted(cal, key=lambda c: c["rating"]):
+        out.append("CALIBRATION VS ESSAYS OF KNOWN STANDING (blind, judged in both orders)")
+        for c in sorted(cal, key=lambda c: c["level"]):
             label = {"win": "WIN  ", "loss": "LOSS ", "split": "SPLIT"}[c["verdict"]]
-            out.append(f"  {label} vs an essay rated {c['rating']:g} (~{c['level']:.0f} on this scale)")
+            o = c.get("opponent") or {}
+            out.append(f"  {label} vs \"{o.get('title', '')}\", {c.get('label', '')} (~{c['level']:.0f} on this scale)")
+            if o.get("url"):
+                out.append(f"         {o['url']}")
             out.append(_wrap(c["decisive_difference"], "         "))
         out.append("")
     if r["similar"]:

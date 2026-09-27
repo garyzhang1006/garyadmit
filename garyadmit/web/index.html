@@ -355,13 +355,17 @@ function render(r) {
   const tally = xs => { const t = { win: 0, loss: 0, split: 0 }; xs.forEach(x => t[x.verdict]++); return `won ${t.win}, lost ${t.loss}, split ${t.split}` + (t.split ? "; splits carry no weight" : ""); };
   const parts = [];
   if (h2h.length) parts.push(`${h2h.length} similar published essays (${tally(h2h)})`);
-  if (cal.length) parts.push(`${cal.length} hidden human-rated essays (${tally(cal)})`);
+  if (cal.length) parts.push(`${cal.length} essays of known standing (${tally(cal)})`);
   const math = parts.length
     ? `Rubric ${r.rubric_score.toFixed(1)} → final ${r.score.toFixed(1)} after blind comparisons against ${parts.join(" and ")}.`
     : `Rubric-only score (${r.rubric_score.toFixed(1)}); no comparisons ran.`;
-  const calHtml = [...cal].sort((a, b) => a.rating - b.rating).map(c => html`<div class="h2h"><div class="res ${c.verdict}">${c.verdict.toUpperCase()}</div><div>
-      <div class="title">vs an essay experts rated ${c.rating} / 9</div><div class="meta">≈ ${Math.round(c.level)} on this scale · private draft, text not shown</div>
-      <p>${c.decisive_difference}</p></div></div>`);
+  // Saved reviews from before the ladder compared against private drafts with no opponent card.
+  const calHtml = [...cal].sort((a, b) => a.level - b.level).map(c => { const o = c.opponent; return html`<div class="h2h"><div class="res ${c.verdict}">${c.verdict.toUpperCase()}</div><div>
+      <div class="title">${o ? (o.title || o.id) : `an essay experts rated ${c.rating} / 9`}</div>
+      <div class="meta">${c.label || "private draft"} · ≈ ${Math.round(c.level)} on this scale${o ? html` · <a href="${safeUrl(o.url)}" target="_blank" rel="noopener">source</a>` : ""}</div>
+      <p><b>Why:</b> ${c.decisive_difference}</p>
+      ${o && c.verdict !== "win" && c.lesson ? html`<p><b>Take from it:</b> ${c.lesson}</p>` : ""}
+      ${o ? html`<details><summary>Read their essay</summary><pre>${o.text}</pre></details>` : ""}</div></div>`; });
   const readers = r.readers;
   const ai = readers.map(x => x.ai_suspicion).find(a => a.level === "medium" || a.level === "high");
 
@@ -442,7 +446,7 @@ function render(r) {
       <div class="panel"><h3>What works <span>quoted or it didn't count</span></h3>${strengths.length ? strengths : html`<p class="empty">Neither reader found a line worth quoting as a strength.</p>`}</div>
     </div>
     ${h2h.length ? html`<div class="panel"><h3><span>Head-to-head vs similar published essays</span><span>blind · judged in both orders</span></h3>${h2hHtml}</div>` : ""}
-    ${cal.length ? html`<div class="panel"><h3><span>Calibration vs human-rated essays</span><span>blind · judged in both orders</span></h3>${calHtml}</div>` : ""}
+    ${cal.length ? html`<div class="panel"><h3><span>Calibration vs essays of known standing</span><span>blind · judged in both orders</span></h3>${calHtml}</div>` : ""}
     ${moreSimilar.length ? html`<div class="panel"><h3>More similar essays worth reading</h3>${moreSimilar}</div>` : ""}
     <div class="panel"><h3><span>Mechanical checks</span><span>${lt.word_count}${lt.word_limit ? " / " + lt.word_limit : ""} words · grade ${lt.reading_grade}</span></h3>${lintHtml}
       ${dropped ? html`<p class="empty">${dropped} reviewer claim(s) were dropped because their quotes did not appear in your essay.</p>` : ""}</div>

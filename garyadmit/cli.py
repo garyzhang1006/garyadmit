@@ -95,7 +95,7 @@ def cmd_bench(a) -> int:
     from .bench import run
 
     try:
-        rep = run(full=a.full, n_rated=a.rated, n_pairs=a.pairs, n_tier=a.tier, workers=a.workers, model=a.model,
+        rep = run(full=a.full, n_rated=a.rated, n_pairs=a.pairs, n_tier=a.tier, workers=a.workers, seed=a.seed, model=a.model,
                   corpus_path=a.corpus, progress=lambda s: print(f"  · {s}", file=sys.stderr, flush=True))
     except llm.LLMError as err:
         print(f"garyadmit: {err}", file=sys.stderr)
@@ -122,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--model", default=None, help="Claude model alias for judging (default: opus)")
     p.add_argument("--fast", action="store_true", help="use sonnet for everything (faster, lighter on usage)")
     p.add_argument("--compare", type=int, default=3, help="head-to-heads against similar published essays (default 3)")
-    p.add_argument("--anchors", type=int, default=4, help="blind comparisons against hidden human-rated drafts (default 4, max 4)")
+    p.add_argument("--anchors", type=int, default=4, help="blind comparisons against published essays of known standing (default 4, max 4)")
     p.add_argument("--no-compare", action="store_true", help="skip all comparisons (rubric-only score)")
     p.add_argument("--json", default=None, help="also write the full result to this JSON file")
     p.set_defaults(fn=cmd_review)
@@ -145,10 +145,11 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("bench", help="check the scores against human ratings (about 75 model calls)")
     p.add_argument("--full", action="store_true", help="run the full pipeline with comparisons (several times the calls)")
-    p.add_argument("--rated", type=int, default=12, help="held-out expert-rated drafts (default 12)")
-    p.add_argument("--pairs", type=int, default=3, help="revision pairs with different ratings (default 3)")
-    p.add_argument("--tier", type=int, default=4, help="essays each from exemplar, weak, and graded sets (default 4)")
+    p.add_argument("--rated", type=int, default=8, help="ElevatEd consultant-rated drafts, a secondary check (default 8)")
+    p.add_argument("--pairs", type=int, default=2, help="ElevatEd revision pairs, a secondary check (default 2)")
+    p.add_argument("--tier", type=int, default=5, help="essays each from exemplar, weak, and graded sets (default 5)")
     p.add_argument("--workers", type=int, default=3)
+    p.add_argument("--seed", default="", help="pick a different sample (confirm tuning on essays it was not tuned on)")
     p.add_argument("--model", default=None)
     p.add_argument("--corpus", default=None)
     p.set_defaults(fn=cmd_bench)

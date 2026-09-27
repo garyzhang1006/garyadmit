@@ -24,13 +24,13 @@ WEIGHTS = {
 }
 
 CATEGORY_GUIDE = {
-    "hook": "Do the first two or three sentences make a tired reader want to keep going, through a specific image, tension, or voice? A generic scene-setter, quote, definition, or rhetorical question is a 3-4.",
+    "hook": "Do the first two or three sentences make a tired reader want to keep going, through a specific image, tension, or voice? A generic opener (a famous quote, a dictionary definition, 'ever since I was young') is a 4 or below; an opener that is merely clear is a 5.",
     "voice": "Does it sound like one particular 17-year-old talking, with their own diction, humor, and way of noticing things? Polished-but-anonymous prose is a 5 at best.",
     "flow": "Does the structure carry the reader, with each paragraph earning the next and transitions that feel inevitable? Is the ending earned instead of tacked on?",
     "conciseness": "Is every sentence doing work? Penalize throat-clearing, repeated points, filler, stacked adjectives, and word-count padding. Over the word limit caps this at 3.",
     "authenticity": "Does it feel true and unperformed, free of inflated stakes, borrowed wisdom, thesaurus words, or signs of AI generation or adult editing?",
-    "uniqueness": "Could only this applicant have written it? Common topics (sports injury, mission trip, grandparent death, immigrant parents, winning the game, the debate round) must be told from an angle no one else would take to score above 6.",
-    "insight": "What does the reader learn about how this person thinks, what they value, and how they have changed? Reflection must be specific and earned; a stated moral ('I learned perseverance') is a 3-4.",
+    "uniqueness": "Could only this applicant have written it? Common topics (sports injury, mission trip, grandparent death, immigrant parents, winning the game) are fine when the details and angle belong to this writer; told the usual way, they sit at 4-5.",
+    "insight": "What does the reader learn about how this person thinks, what they value, and how they have changed? A stated moral with nothing specific behind it ('I learned perseverance') is a 4. A stated lesson that follows from specific, earned reflection can still score 7 or more.",
 }
 
 ANCHORS = """Score each category from 1 to 10 using these anchors. The anchors describe where the essay would sit in the stack of essays submitted to a college that admits under 10% of applicants.
@@ -44,11 +44,12 @@ ANCHORS = """Score each category from 1 to 10 using these anchors. The anchors d
 3 = weak. The problems dominate the reading.
 1-2 = actively hurts the application."""
 
-CALIBRATION = """Calibration rules. These outrank any instinct to encourage the writer.
-- Your scores are audited against experienced admissions readers' ratings of the same essays. Inflation is the most common error and counts as a miss exactly like harshness does.
-- Most essays you will ever see score 4 to 6. Do not drift toward 7 and 8 because the writing is grammatical and earnest; that is the floor, not an achievement.
+CALIBRATION = """Calibration rules. These outrank any instinct to encourage or to impress with severity.
+- Your scores are audited against experienced admissions readers' ratings of the same essays. Scoring too high and scoring too low are equal misses.
+- Reference points: essays that admissions offices publish as models of what worked usually land at 7-9 in most categories, even though many have visible flaws such as a stated lesson, a stretched metaphor, or stiff phrasing. Admissions readers forgive craft flaws when an essay shows a specific person clearly. Typical applicant drafts land at 4-6, and essays that are generic from start to finish land at 2-4.
+- Grammatical, earnest writing is the floor, not an achievement; it does not by itself earn a 6.
 - A serious, painful, or impressive topic earns nothing by itself. Grade what the writing does with it.
-- Polish without a distinct person behind it is a 5 at most for voice, authenticity, and uniqueness.
+- Polish without a distinct person behind it sits around 5 for voice, authenticity, and uniqueness.
 - If the essay reads as AI-generated or heavily adult-edited (abstract vocabulary like tapestry, journey, testament, delve; symmetrical paragraphs; a tidy moral; no specific, odd, lived detail), score authenticity and voice at 4 or below and say so plainly.
 - Never sandwich criticism between compliments. Only praise what you can quote, and never use words like compelling, powerful, vivid, beautiful, or impressive without quoting the exact line that earns them.
 - Quotes must be copied exactly, character for character, from the essay. Do not paraphrase inside quote fields.
@@ -83,7 +84,7 @@ Process:
 
 PERSONA_AO = """You are a senior admissions officer at a highly selective US university, reading this essay as part of a file in the middle of reading season. You spend about four minutes on an essay. You care about one question: after reading, do I know someone specific, and do I want them on campus? You have read tens of thousands of essays and have no patience for performance, cliché, or résumé recitation."""
 
-PERSONA_EDITOR = """You are a former Ivy League admissions reader who now trains new readers to score essays consistently. You read at the level of structure, paragraph, and sentence: what each part is doing, where the essay loses the reader, which details are specific and which are generic. New readers are told to copy your scores because they match committee outcomes, not because they are generous."""
+PERSONA_EDITOR = """You are a former Ivy League admissions reader who now trains new readers to score essays consistently. You read at the level of structure, paragraph, and sentence: what each part is doing, where the essay loses the reader, which details are specific and which are generic. New readers are told to copy your scores because they match committee outcomes, neither generous nor severe."""
 
 
 def reviewer_prompt(essay: str, meta: dict, lint_summary: str) -> str:

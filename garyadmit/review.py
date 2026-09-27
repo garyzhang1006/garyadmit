@@ -20,13 +20,13 @@ from pathlib import Path
 from typing import Callable
 
 from . import llm, rubric, scoring
-from .corpus import Corpus, Essay, load_anchors, pick_anchors
+from .corpus import Corpus, Essay, ladder_label, pick_ladder
 from .lint import lint, summarize_for_prompt
 
 HISTORY_DIR = Path.home() / ".garyadmit" / "history"
-# Human ratings (4-9 scale) of the hidden anchors each essay is compared with:
-# spread across the range so any essay gets informative wins and losses.
-ANCHOR_TARGETS = [5.0, 6.0, 7.0, 8.25]
+# Levels of the known-standing essays each review is compared with, spread across
+# the scale so any essay gets informative wins and losses.
+LADDER_TARGETS = [45.0, 58.0, 72.0, 86.0]
 
 _corpus_cache: dict[str, Corpus] = {}
 
@@ -167,7 +167,6 @@ def review(
     n_compare: int = 3,
     n_anchor: int = 4,
     corpus_path: str | None = None,
-    anchors_path: str | None = None,
     progress: Callable[[str], None] | None = None,
     save: bool = True,
     line_edits: bool = True,
@@ -190,28 +189,29 @@ def review(
         corpus = None
         say(str(err))
     user_prompt = rubric.reviewer_prompt(essay, meta, lint_text)
-    # Anchors are personal-statement drafts, so they only calibrate personal statements.
-    anchors = pick_anchors(load_anchors(anchors_path), ANCHOR_TARGETS[:n_anchor], essay, exclude_text=essay) \
-        if essay_type == "personal" and n_anchor else []
+    ladder = pick_ladder(corpus, LADDER_TARGETS[:n_anchor], essay_type, essay, exclude_text=essay) \
+        if corpus is not None and n_anchor else []
+    ladder_ids = {e.id for e in ladder}
 
     with ThreadPoolExecutor(max_workers=8) as pool:
         fut_a = pool.submit(llm.ask_json, rubric.reviewer_system(rubric.PERSONA_AO), user_prompt, rubric.REVIEW_SCHEMA, model=model)
         fut_b = pool.submit(llm.ask_json, rubric.reviewer_system(rubric.PERSONA_EDITOR), user_prompt, rubric.REVIEW_SCHEMA, model=model)
         fut_e = pool.submit(llm.ask_json, rubric.EDITOR_SYSTEM, rubric.edits_prompt(essay, meta), rubric.EDITS_SCHEMA,
                             model=model) if line_edits else None
-        fut_anchor = [pool.submit(head_to_head, essay, a.text, meta, model) for a in anchors]
+        fut_ladder = [pool.submit(head_to_head, essay, e.text, meta, model) for e in ladder]
 
         profile, similar, h2h = None, [], []
         if corpus is not None and len(corpus) and n_compare:
             profile, similar = find_similar(essay, meta, corpus, max(n_similar, n_compare), fast_model)
             say(f"Found {len(similar)} similar published essays")
-            futs = [(s["essay"], pool.submit(head_to_head, essay, s["essay"].text, meta, model)) for s in similar[:n_compare]]
+            opponents = [s["essay"] for s in similar if s["essay"].id not in ladder_ids][:n_compare]
+            futs = [(e, pool.submit(head_to_head, essay, e.text, meta, model)) for e in opponents]
             for opp, f in futs:
                 got = _survive(f, say)
                 if got:
                     h2h.append({**got, "opponent": opp})
             say("Head-to-head comparisons done")
-        calib = [{**got, "anchor": a} for a, f in zip(anchors, fut_anchor) if (got := _survive(f, say))]
+        calib = [{**got, "opponent": e} for e, f in zip(ladder, fut_ladder) if (got := _survive(f, say))]
         if calib:
             say("Calibration comparisons done")
 
@@ -244,7 +244,7 @@ def review(
 
     rubric_score = scoring.rubric_overall(merged)
     matches = [(h["opponent"].level, h["outcome"]) for h in h2h if h["outcome"] is not None]
-    matches += [(c["anchor"].level, c["outcome"]) for c in calib if c["outcome"] is not None]
+    matches += [(c["opponent"].level, c["outcome"]) for c in calib if c["outcome"] is not None]
     final = scoring.final_score(rubric_score, matches)
     band, band_desc = rubric.band(final)
 
@@ -287,10 +287,11 @@ def review(
         "head_to_head": [
             {**{k: v for k, v in h.items() if k != "opponent"}, "opponent": _essay_card(h["opponent"])} for h in h2h
         ],
-        # Anchor essays are private drafts: report only their human rating and the verdict.
+        # Known-standing published essays: the ladder that sets the scale.
         "calibration": [
-            {"rating": c["anchor"].rating, "level": c["anchor"].level, "outcome": c["outcome"],
-             "verdict": c["verdict"], "decisive_difference": c["decisive_difference"]}
+            {"label": ladder_label(c["opponent"]), "level": c["opponent"].level, "outcome": c["outcome"],
+             "verdict": c["verdict"], "decisive_difference": c["decisive_difference"], "lesson": c["lesson"],
+             "opponent": _essay_card(c["opponent"])}
             for c in calib
         ],
         # Counted from this review's start; overlapping reviews in one server share the counter.

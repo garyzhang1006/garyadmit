@@ -22,7 +22,7 @@ import unicodedata
 
 from .rubric import CATEGORIES, WEIGHTS
 
-PRIOR_SD = 8.0
+PRIOR_SD = 12.0  # comparisons outweigh the rubric; the rubric ran 10-35 points harsh on model essays in bench
 SCALE = 5.0
 DISAGREE_AT = 3
 

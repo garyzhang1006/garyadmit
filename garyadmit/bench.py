@@ -1,11 +1,14 @@
 """Honesty benchmark: does the score track human judgment, and does it glaze?
 
-Scores a fixed, hash-chosen sample and compares against what humans said:
-  - held-out ElevatEd drafts (expert rating 4-9, never used as anchors)
-  - revision pairs of the same essay with different human ratings
-  - admissions-office exemplars vs essays published as weak
-  - AdmitReport letter grades
+Scores a fixed, hash-chosen sample and compares against what humans said.
+Primary (known standing, the scale GaryAdmit is built on):
+  - admissions-office exemplars (85), essays published as weak (45),
+    AdmitReport letter grades (their grade level)
   - one generic, AI-sounding essay that should score low
+Secondary (reported, not tuned for):
+  - ElevatEd drafts with a consultant's 4-9 rating, and revision pairs. In
+    testing the blind judge agreed with these ratings at chance level, and the
+    thesis that released them found them hard to model, so they are a weak yardstick.
 
 Default mode is rubric-only (2-3 model calls per essay) so a run stays around
 75 calls; --full runs the whole pipeline, comparisons included.
@@ -23,7 +26,7 @@ from pathlib import Path
 from typing import Callable
 
 from . import llm
-from .corpus import GRADE_LEVEL, Anchor, Corpus, load_anchors
+from .corpus import GRADE_LEVEL, TIER_LEVEL, Anchor, Corpus, load_anchors
 from .review import get_corpus, review
 
 BENCH_DIR = Path.home() / ".garyadmit" / "bench"
@@ -78,23 +81,28 @@ def _item(kind: str, id_: str, text: str, **kw) -> dict:
             "prompt": kw.pop("prompt", ""), **kw}
 
 
-def sample(corpus: Corpus | None, bench: list[Anchor], n_rated: int = 12, n_pairs: int = 3, n_tier: int = 4) -> list[dict]:
+def sample(corpus: Corpus | None, bench: list[Anchor], n_rated: int = 12, n_pairs: int = 3, n_tier: int = 4,
+           seed: str = "") -> list[dict]:
+    """Deterministic for a given seed. Tune on one seed and confirm on another, so the
+    reported numbers are not fitted to the essays they were measured on."""
+    _hs = lambda s: _h(seed + s)
     items: list[dict] = []
     groups: dict[str, list[Anchor]] = defaultdict(list)
     for a in bench:
         groups[a.group or a.id].append(a)
     pair_groups = sorted((g for g, v in groups.items() if max(x.rating for x in v) - min(x.rating for x in v) >= 0.5),
-                         key=lambda g: _h("pair" + g))[:n_pairs]
+                         key=lambda g: _hs("pair" + g))[:n_pairs]
     for g in pair_groups:
         v = sorted(groups[g], key=lambda a: a.rating)
         for a in (v[0], v[-1]):
             items.append(_item("pair", a.id, a.text, rating=a.rating, level=a.level, group=g))
-    rest = sorted((a for a in bench if (a.group or a.id) not in pair_groups), key=lambda a: (a.rating, _h(a.id)))
+    rest = sorted((a for a in bench if (a.group or a.id) not in pair_groups), key=lambda a: (a.rating, _hs(a.id)))
     if rest and n_rated:
         # Evenly spaced through the rating-sorted list so the whole 4-9 range is covered.
         step = max(1, len(rest) // n_rated)
+        offset = _hs("offset") % step
         picked, seen_groups = [], set()
-        for a in rest[::step]:
+        for a in rest[offset::step]:
             if (a.group or a.id) in seen_groups:
                 continue
             seen_groups.add(a.group or a.id)
@@ -103,16 +111,17 @@ def sample(corpus: Corpus | None, bench: list[Anchor], n_rated: int = 12, n_pair
             items.append(_item("rated", a.id, a.text, rating=a.rating, level=a.level, group=a.group))
     if corpus is not None:
         def pick(pred, n, salt):
-            pool = sorted((e for e in corpus.essays if pred(e)), key=lambda e: _h(salt + e.id))
+            pool = sorted((e for e in corpus.essays if pred(e)), key=lambda e: _hs(salt + e.id))
             return pool[:n]
         for e in pick(lambda e: e.source in OFFICE_SOURCES and e.essay_type == "personal", n_tier, "ex"):
-            items.append(_item("exemplar", e.id, e.text, source=e.source, url=e.url))
+            items.append(_item("exemplar", e.id, e.text, source=e.source, url=e.url, level=TIER_LEVEL["exemplar"]))
         for e in pick(lambda e: e.tier == "weak", n_tier, "weak"):
-            items.append(_item("weak", e.id, e.text, source=e.source, url=e.url, essay_type=e.essay_type, prompt=e.prompt))
-        graded = sorted((e for e in corpus.essays if e.grade in GRADE_LEVEL), key=lambda e: (GRADE_LEVEL[e.grade], _h(e.id)))
+            items.append(_item("weak", e.id, e.text, source=e.source, url=e.url, essay_type=e.essay_type, prompt=e.prompt,
+                               level=float(GRADE_LEVEL.get(e.grade, TIER_LEVEL["weak"]))))
+        graded = sorted((e for e in corpus.essays if e.grade in GRADE_LEVEL), key=lambda e: (GRADE_LEVEL[e.grade], _hs(e.id)))
         if graded and n_tier:
             step = max(1, len(graded) // n_tier)
-            for e in graded[::step][:n_tier]:
+            for e in graded[_hs("g") % step::step][:n_tier]:
                 items.append(_item("graded", e.id, e.text, grade=e.grade, level=float(GRADE_LEVEL[e.grade]),
                                    source=e.source, url=e.url, essay_type=e.essay_type, prompt=e.prompt))
     items.append(_item("ai", "generic-ai", GENERIC_AI_ESSAY))
@@ -123,6 +132,12 @@ def metrics(results: list[dict]) -> dict:
     ok = [r for r in results if r.get("score") is not None]
     human = [r for r in ok if r["kind"] in ("rated", "pair")]
     m: dict = {"n_scored": len(ok), "n_failed": len(results) - len(ok)}
+    known = [r for r in ok if r["kind"] in ("exemplar", "weak", "graded")]
+    if known:
+        m["known_spearman"] = spearman([r["score"] for r in known], [r["level"] for r in known])
+        m["known_offset"] = statistics.fmean(r["score"] - r["level"] for r in known)
+        m["known_mae"] = statistics.fmean(abs(r["score"] - r["level"]) for r in known)
+        m["n_known"] = len(known)
     if human:
         m["rated_spearman"] = spearman([r["score"] for r in human], [r["rating"] for r in human])
         m["rated_offset"] = statistics.fmean(r["score"] - r["level"] for r in human)
@@ -159,14 +174,12 @@ def metrics(results: list[dict]) -> dict:
 
 def verdicts(m: dict) -> list[str]:
     out = []
-    if "rated_offset" in m:
-        off = m["rated_offset"]
+    if "known_offset" in m:
+        off = m["known_offset"]
         tone = "inflated" if off > 5 else "harsh" if off < -5 else "on target"
-        out.append(f"Level vs expert ratings: {off:+.1f} points on average ({tone}; MAE {m['rated_mae']:.1f}).")
-    if m.get("rated_spearman") is not None:
-        out.append(f"Rank agreement with expert ratings: Spearman {m['rated_spearman']:.2f} (0.5+ is useful, 0.7+ is strong).")
-    if "pairs_correct" in m:
-        out.append(f"Revision pairs ordered like the humans: {m['pairs_correct']:.0%}.")
+        out.append(f"Level vs {m['n_known']} essays of known standing: {off:+.1f} points on average ({tone}; MAE {m['known_mae']:.1f}).")
+    if m.get("known_spearman") is not None:
+        out.append(f"Rank agreement with known standing: Spearman {m['known_spearman']:.2f} (0.5+ is useful, 0.7+ is strong).")
     if "tier_gap" in m:
         out.append(f"Admissions exemplars {m['exemplar_mean']:.0f} vs published weak essays {m['weak_mean']:.0f} (gap {m['tier_gap']:.0f}).")
     if m.get("graded_spearman") is not None:
@@ -177,10 +190,14 @@ def verdicts(m: dict) -> list[str]:
         out.append(f"Generic AI-sounding essay: {m['generic_ai_score']:.0f} ({'pass' if m['generic_ai_score'] < 50 else 'FAIL: should be under 50'}).")
     if "score_sd" in m:
         out.append(f"Score spread (SD): {m['score_sd']:.1f}.")
+    if "rated_offset" in m:
+        out.append(f"Secondary, ElevatEd consultant ratings: offset {m['rated_offset']:+.1f}, "
+                   + (f"Spearman {m['rated_spearman']:.2f}" if m.get("rated_spearman") is not None else "Spearman n/a")
+                   + (f", revision pairs {m['pairs_correct']:.0%}" if "pairs_correct" in m else "") + ".")
     return out
 
 
-def run(*, full: bool = False, n_rated: int = 12, n_pairs: int = 3, n_tier: int = 4, workers: int = 3,
+def run(*, full: bool = False, n_rated: int = 8, n_pairs: int = 2, n_tier: int = 5, workers: int = 3, seed: str = "",
         model: str | None = None, corpus_path: str | None = None, anchors_path: str | None = None,
         progress: Callable[[str], None] | None = None) -> dict:
     say = progress or (lambda s: None)
@@ -189,7 +206,7 @@ def run(*, full: bool = False, n_rated: int = 12, n_pairs: int = 3, n_tier: int 
     except FileNotFoundError:
         corpus = None
     bench = load_anchors(anchors_path, split="bench")
-    items = sample(corpus, bench, n_rated, n_pairs, n_tier)
+    items = sample(corpus, bench, n_rated, n_pairs, n_tier, seed)
     say(f"Scoring {len(items)} essays ({'full pipeline' if full else 'rubric only'})")
 
     def one(it: dict) -> dict:
@@ -197,7 +214,7 @@ def run(*, full: bool = False, n_rated: int = 12, n_pairs: int = 3, n_tier: int 
         try:
             r = review(it["text"], prompt=it.get("prompt", ""), essay_type=it["essay_type"], word_limit=limit,
                        model=model, n_compare=3 if full else 0, n_anchor=4 if full else 0,
-                       corpus_path=corpus_path, anchors_path=anchors_path, save=False, line_edits=False)
+                       corpus_path=corpus_path, save=False, line_edits=False)
             out = {**{k: v for k, v in it.items() if k != "text"}, "score": r["score"], "rubric_score": r["rubric_score"],
                    "words": len(it["text"].split())}
         except (llm.LLMError, ValueError) as err:
@@ -208,7 +225,7 @@ def run(*, full: bool = False, n_rated: int = 12, n_pairs: int = 3, n_tier: int 
     with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
         results = list(pool.map(one, items))
     m = metrics(results)
-    report = {"created": dt.datetime.now().isoformat(timespec="seconds"), "full": full, "model": model or llm.DEFAULT_MODEL,
+    report = {"created": dt.datetime.now().isoformat(timespec="seconds"), "full": full, "seed": seed, "model": model or llm.DEFAULT_MODEL,
               "metrics": m, "verdicts": verdicts(m), "results": results, "usage": dict(llm.usage)}
     BENCH_DIR.mkdir(parents=True, exist_ok=True)
     (BENCH_DIR / (dt.datetime.now().strftime("%Y%m%d-%H%M%S") + ".json")).write_text(json.dumps(report, indent=1))

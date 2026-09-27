@@ -72,6 +72,9 @@ def _corpus():
         Essay(id="a", text="My grandmother and I folded dumplings every Sunday in her kitchen. " * 5, url="https://x/a", source="t", tier="exemplar", title="Dumplings"),
         Essay(id="b", text="Robotics competition, soldering servos, and a failed autonomous run. " * 5, url="https://x/b", source="t", tier="admitted", title="Robots"),
         Essay(id="c", text="Cross country races taught me about pain and pacing on hills. " * 5, url="https://x/c", source="t", tier="exemplar", title="Running"),
+        Essay(id="w", text="I have always wanted to be a doctor because I like helping people. " * 5, url="https://x/w", source="t", tier="weak", title="Doctor"),
+        Essay(id="gc", text="My summer job at the pool taught me responsibility and patience. " * 5, url="https://x/gc", source="admitreport", tier="weak", grade="C", title="Pool"),
+        Essay(id="gb", text="Volunteering at the animal shelter showed me what commitment means. " * 5, url="https://x/gb", source="admitreport", tier="example", grade="B", title="Shelter"),
     ])
 
 
@@ -134,10 +137,6 @@ def fake(monkeypatch, tmp_path):
     llm.set_backend(f)
     monkeypatch.setattr(rv, "HISTORY_DIR", tmp_path)
     monkeypatch.setattr(rv, "get_corpus", lambda path=None: _corpus())
-    monkeypatch.setattr(rv, "load_anchors", lambda path=None: [
-        Anchor(f"anc{i}", f"Anchor essay number {i} about a summer job at a bakery. " * 20, r, "anchor", f"g{i}")
-        for i, r in enumerate([4.5, 5.0, 6.0, 6.0, 7.0, 7.25, 8.0, 8.5])
-    ])
     yield f
     llm.set_backend(None)
 
@@ -156,7 +155,9 @@ def test_review_pipeline_end_to_end(fake):
     assert r["categories"]["voice"]["adjudicated"] and r["categories"]["voice"]["score"] == 4
     # Position-biased judge yields splits, not wins.
     assert r["head_to_head"] and all(h["verdict"] == "split" for h in r["head_to_head"])
-    assert r["head_to_head"][0]["opponent"]["id"] == "a"
+    # Ladder essays are never reused as similar-essay opponents.
+    ladder_ids = {c["opponent"]["id"] for c in r["calibration"]}
+    assert not ladder_ids & {h["opponent"]["id"] for h in r["head_to_head"]}
     assert 0 <= r["score"] <= 100 and r["band"]
 
 
@@ -165,9 +166,8 @@ def test_calibration_losses_pull_score_down(fake):
     fake.prefer_opponent = True
     r = review(ESSAY, n_compare=2, n_similar=3)
     assert len(r["calibration"]) == 4 and all(c["verdict"] == "loss" for c in r["calibration"])
-    got = sorted(c["rating"] for c in r["calibration"])
-    assert all(abs(g - t) <= 0.25 for g, t in zip(got, [5.0, 6.0, 7.0, 8.25]))
-    assert "text" not in r["calibration"][0]  # private drafts never reach the report
+    assert sorted(c["level"] for c in r["calibration"])[0] == 45.0  # the ladder reaches the weak end
+    assert all(c["label"] and c["opponent"]["url"] for c in r["calibration"])
     assert r["score"] < r["rubric_score"]
 
 
@@ -220,14 +220,15 @@ def test_spearman_and_bench_metrics():
         {"kind": "pair", "group": "g", "rating": 5.0, "level": 45.0, "score": 50.0},
         {"kind": "pair", "group": "g", "rating": 7.0, "level": 65.0, "score": 72.0},
         {"kind": "rated", "group": "h", "rating": 6.0, "level": 55.0, "score": 75.0},
-        {"kind": "weak", "score": 40.0},
-        {"kind": "exemplar", "score": 80.0},
+        {"kind": "weak", "score": 40.0, "level": 45.0},
+        {"kind": "exemplar", "score": 80.0, "level": 85.0},
         {"kind": "ai", "score": 44.0},
     ]
     m = metrics(res)
     assert m["pairs_correct"] == 1.0 and m["tier_gap"] == 40.0
     assert m["glaze_rate"] == pytest.approx(1 / 3)  # the 6.0-rated draft scored 75
     assert m["rated_offset"] == pytest.approx((5 + 7 + 20) / 3)
+    assert m["known_offset"] == pytest.approx(-5.0) and m["n_known"] == 2
 
 
 def test_bench_sample_is_deterministic_and_covers_kinds():
@@ -288,3 +289,11 @@ def test_failed_comparison_is_skipped_not_fatal(fake):
     llm.set_backend(flaky)
     r = review(ESSAY, n_compare=2, n_similar=3)
     assert r["head_to_head"] == [] and r["calibration"] == [] and r["score"] == r["rubric_score"]
+
+
+def test_pick_ladder_spreads_levels_and_prefers_same_type():
+    from garyadmit.corpus import pick_ladder
+    got = pick_ladder(_corpus(), [45.0, 58.0, 72.0, 86.0], "personal", "seed", exclude_text="")
+    assert [e.level for e in got] == [45.0, 58.0, 72.0, 85.0]
+    assert len({e.id for e in got}) == 4
+    assert all(e.id != "gc" for e in pick_ladder(_corpus(), [58.0], "personal", "seed", exclude_text=_corpus().essays[4].text))
