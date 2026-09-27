@@ -65,6 +65,19 @@ Claude runs every one of these checks, so they catch a lot and miss some. Read t
 
 A draft that fails gets one more round with the failures spelled out. If it still fails, you see it marked NOT VERIFIED, with the reasons. A revision takes two to five minutes and seven to thirteen model calls. Benchmark results, including where the check failed, are in `docs/revise-bench.md`.
 
+## Ask for changes
+
+Below the revision there is a chat box. Type what you want changed, such as "make the hook a 10/10", "cut 50 words", or "the ending feels flat", and the working essay beside it comes back with that change made. It starts from the edited essay if you made one, otherwise from your original, and each message builds on the last. Undo, "Use this version", and "Show what changed" let you step back through versions. A question such as "is my ending too abrupt?" gets an answer and leaves the essay alone.
+
+Each change goes through the same checks as a revision, adapted to the chat:
+
+- The editor changes only what you asked about and keeps your voice and your facts. Anything you type in the chat counts as a fact you supplied, so you can answer a bracketed question by typing the answer.
+- The invented-fact check compares the new version with your original essay plus everything you typed in the chat.
+- A blind judge scores the part you asked about from 1 to 10, before and after, in both orders, without seeing your request or which version is new. It also says which version makes the stronger essay overall and what would get that part to a 10. On its scale a 10 is the best essay in a reading season, so a "10/10" request usually comes back with a score and a note on what is still missing, often a detail only you know.
+- A change that the judge does not score higher, that makes the whole essay worse, or that fails a check gets one retry with the reasons, and any failure left over is shown under the reply.
+
+A change takes one to two minutes and about four model calls (up to eight with the retry); a question takes one. The conversation is saved with the review.
+
 ## Why the score is hard to inflate
 
 Language models flatter by default. GaryAdmit counters that in layers.
