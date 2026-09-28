@@ -65,6 +65,16 @@ Claude runs every one of these checks, so they catch a lot and miss some. Read t
 
 A draft that fails gets one more round with the failures spelled out. If it still fails, you see it marked NOT VERIFIED, with the reasons. A revision takes two to five minutes and seven to thirteen model calls. Benchmark results, including where the check failed, are in `docs/revise-bench.md`.
 
+## Make every line edit
+
+The **Line edits** tab has a **Make all N changes** button, and the Feedback tab has one too. It makes the line edits all at once and opens a **Changes made** tab with the result: the essay with the changes in, a view of what changed against your original, a list of details to check, and each edit's status. An edit is left out when its passage is gone from the essay, when it overlaps an earlier one, or when the line editor's quote only partly matched your essay. It is also left out when the editor's answer was still unusable after one retry (skipped, empty, or still asking a question) or the retry itself failed, and in every case the tab says why. A note that only you can carry out, such as moving a paragraph, is left as written with a word on what to do.
+
+Cuts and rewrites go in exactly as the line editor wrote them. Notes, and rewrites that ask for something only you know, such as `[name the song your dad hummed]`, go to an editor that writes the missing detail itself: a quote, a name, a number, a short scene. This is the one place GaryAdmit makes things up on purpose, so the editor has to list every detail it wrote, and each one is highlighted in the essay with what it stands in for. The invented-fact check from the rewrite then reads the whole essay and highlights anything new the editor did not list, including facts the line edits themselves added. Claude runs that check too, so it can miss one. Replace each highlighted detail with what really happened, or cut it, before you use the essay.
+
+Nothing here judges whether the essay got better. To find out, replace the made-up details first, then press **Edit and re-score**, which puts the new version in the essay box for a fresh review. A score for an essay that still holds invented details says little about yours.
+
+It takes one to three minutes and up to three model calls: the editor, one retry for answers that came back unusable, and the invented-fact check. The result is saved with the review. **Make the changes again** replaces it with new made-up details, and **Use in chat** hands that version to the **Ask for changes** tab, where you can type the real details and have them swapped in.
+
 ## Ask for changes
 
 The report's **Ask for changes** tab has a chat box. Type what you want changed, such as "make the hook a 10/10", "cut 50 words", or "the ending feels flat", and the working essay beside it comes back with that change made. It starts from the edited essay if you made one, otherwise from your original, and each message builds on the last. Undo, "Use this version", and "Show what changed" let you step back through versions. A question such as "is my ending too abrupt?" gets an answer and leaves the essay alone.

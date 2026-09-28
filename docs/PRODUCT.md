@@ -12,7 +12,7 @@ The job: find out honestly how good the essay is and what to change first, then 
 
 ## Product Purpose
 
-GaryAdmit gives a score out of 100 that can be checked: two independent readers, seven category scores, line edits, and blind comparisons against real published essays. It then offers a checked rewrite and a chat for targeted changes, each verified by a blind judge before it is called better.
+GaryAdmit gives a score out of 100 that can be checked: two independent readers, seven category scores, line edits, and blind comparisons against real published essays. It then offers a checked rewrite and a chat for targeted changes, each verified by a blind judge before it is called better. One button also makes the line edits at once, writes any detail an edit asks for, and says which edits it could not make. The editor is asked to mark each one as made up, and a check looks for any it missed, so the student replaces them with the truth.
 
 Success is a student who trusts the score, knows the three things to fix first, and leaves with a stronger draft that still sounds like them.
 
