@@ -460,6 +460,27 @@ figure.best figcaption { margin-top: var(--s1); padding-left: var(--s4); font-si
 .move-eff { color: var(--ink-2); }
 .kept { margin-top: var(--s5); }
 
+/* line edits, all made at once */
+.apply-bar { display: grid; justify-items: start; gap: var(--s2); margin: 0 0 var(--s4); padding: 0 0 var(--s4); border-bottom: 1px solid var(--line); }
+.apply-bar:empty { display: none; }
+#applyCta { display: contents; }
+.tab.enter { animation: fade-up var(--t3) var(--ease); }
+.applied .notice { margin-bottom: var(--s4); }
+mark.madeup { padding: 0 2px; border-radius: 2px; background: var(--amber-soft); color: inherit; -webkit-box-decoration-break: clone; box-decoration-break: clone; text-decoration: underline dotted var(--amber) 1.5px; text-underline-offset: 4px; transition: background-color var(--t1) var(--ease), box-shadow var(--t1) var(--ease); }
+mark.madeup.active { background: var(--mark-active); box-shadow: 0 0 0 2px var(--mark-active); outline: 2px solid var(--amber); outline-offset: 2px; }
+/* Color alone doesn't tell a screen reader; generated text is read aloud but never copied with a selection. */
+mark.madeup::before, mark.madeup::after { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+mark.madeup::before { content: " made up, start: "; }
+mark.madeup::after { content: " made up, end "; }
+.doc-count.over { color: var(--amber); font-weight: 600; }
+.madeups { list-style: none; margin: 0; padding: 0; }
+.madeups li + li { border-top: 1px solid var(--line); }
+.madeup-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s1) var(--s3); width: 100%; min-height: 44px; padding: var(--s2); border: 0; border-radius: var(--r1); background: none; color: var(--ink); text-align: left; font-size: var(--fs-sm); line-height: 1.5; transition: background-color var(--t1) var(--ease); }
+.madeup-item:hover { background: var(--raised); }
+.madeup-item mark.madeup { font-family: var(--font-text); font-size: var(--fs-md); }
+.madeup-for { color: var(--ink-2); }
+.applied .actions { align-items: center; margin-top: var(--s5); }
+
 /* chat */
 .chat-intro { margin-bottom: var(--s5); }
 .chat-intro details { margin-top: var(--s3); }
@@ -576,6 +597,8 @@ dialog.drawer.closing::backdrop { animation: fade-out var(--t2) var(--ease) forw
   .cat-detail { padding-left: var(--s2); }
   .doc-read, .draft { padding: var(--s5) var(--s4); }
   .editlist { position: sticky; top: auto; bottom: 0; max-height: 42vh; margin: 0 calc(-1 * var(--s4)); padding: var(--s3) var(--s4); background: var(--bg); border-top: 1px solid var(--line); box-shadow: 0 -2px 8px oklch(0.2 0.02 40 / 0.1); }
+  .editlist .apply-bar { margin-bottom: var(--s3); padding-bottom: var(--s3); }
+  .editlist .apply-bar .hint { display: none; }  /* in a 42vh sheet it pushed the edit cards out of view */
   .chatpanel { position: static; order: -1; max-height: none; }
   .thread { max-height: 50vh; }
 }
@@ -584,8 +607,8 @@ dialog.drawer.closing::backdrop { animation: fade-out var(--t2) var(--ease) forw
   .top .btn:not(.btn-icon) { width: 44px; padding: 0; }
   .doc-bar { position: static; }  /* header, tabs and a wrapped bar would cover a quarter of a phone screen */
   .doc-bar .spacer { flex-basis: 100%; }  /* actions get one row of their own under the title */
-  #chatCopy .label, #chatUndo .label { display: none; }  /* the copy toast confirms; both keep an aria-label */
-  #chatCopy, #chatUndo { width: 44px; padding: 0; justify-content: center; }
+  #chatCopy .label, #chatUndo .label, #appliedCopy .label, #appliedChat .label { display: none; }  /* the copy toast confirms; each keeps an aria-label */
+  #chatCopy, #chatUndo, #appliedCopy, #appliedChat { width: 44px; padding: 0; justify-content: center; }
   .rung-level { min-width: 0; }
   .ruler-labels span:last-child { display: none; }  /* 100 collides with 93 at phone width */
 }
@@ -616,6 +639,7 @@ dialog.drawer.closing::backdrop { animation: fade-out var(--t2) var(--ease) forw
   <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5v-2a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/></symbol>
   <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
   <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-8l-4 3.5V16H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></symbol>
   <symbol id="i-left" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></symbol>
   <symbol id="i-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
   <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5M12 16.2v.1"/></symbol>
@@ -755,6 +779,7 @@ let versions = [];  // working drafts, oldest first; the last is on screen and i
 const chatting = new Map();  // key() of a review -> its running chat request, whose paint() redraws it on whichever copy is on screen
 const unsent = new Map();  // key() of a review -> a message from its box that failed while another review was on screen
 const revising = new Map();  // key() of a review -> progress of its running rewrite
+const applying = new Map();  // key() of a review -> progress of its running job that makes every line edit
 
 // True when focus sits on nothing, usually because the focused control was just replaced.
 const lostFocus = () => !document.activeElement || document.activeElement === document.body;
@@ -1098,7 +1123,10 @@ function activate(i, scroll) {
 }
 
 // ---- report tabs ---------------------------------------------------------------
-const TABS = [["feedback", "Feedback"], ["edits", "Line edits"], ["rewrite", "Rewrite"], ["chat", "Ask for changes"], ["compare", "Comparisons"]];
+const TABS = [["feedback", "Feedback"], ["edits", "Line edits"], ["applied", "Changes made"], ["rewrite", "Rewrite"], ["chat", "Ask for changes"], ["compare", "Comparisons"]];
+// The Changes made tab exists only once the student has pressed a button that makes the line edits.
+const hasApplied = r => !!(r.applied || applying.has(key(r)));
+const tabBtnHtml = (k, label, on, counts) => html`<button type="button" class="tab" role="tab" id="tabbtn-${k}" data-tab="${k}" aria-controls="tab-${k}" aria-selected="${String(on)}" tabindex="${on ? 0 : -1}">${label}${k in counts ? html`<span class="count"${counts[k] ? "" : html` hidden`}>${counts[k]}</span>` : ""}<span class="state" aria-hidden="true"></span><span class="sr-only sr-state"></span></button>`;
 function moveInd(instant) {
   const ind = $("#report .tab-ind"), b = $('#report .tab[aria-selected="true"]');
   if (!ind || !b || !b.offsetWidth) return;
@@ -1314,6 +1342,208 @@ async function startRevision() {
   }
 }
 
+// ---- line edits, all made at once ----------------------------------------------
+// An edit whose quote only partly matches the essay has no place to go, so the server always reports it not made.
+const usableEdit = e => !e.partial && (e.kind === "cut" || e.kind === "rewrite" || (e.kind === "comment" && !!String(e.suggestion || "").trim()));
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+// Every copy of one made-up detail is highlighted, so the count goes by text.
+const detailCount = mu => new Set(mu.map(m => m.text)).size;
+// Notes left as written can explain a run that changed nothing, which differs from edits that failed.
+const noTextChanged = c => c.made === 0 && c.unchanged > 0;
+const KIND = { cut: "Cut", rewrite: "Rewrite", comment: "Note" };
+
+function applyBtnHtml(r, where) {
+  const n = (r.edits || []).filter(usableEdit).length;
+  if (!n) return html``;
+  const cls = where === "bar" ? "btn btn-primary" : "btn btn-secondary";
+  if (applying.has(key(r))) return html`<button type="button" class="${cls}" data-goto="applied">See progress</button>`;
+  if (r.applied) return html`<button type="button" class="${cls}" data-goto="applied">${r.applied.counts.made ? "See the changes made" : noTextChanged(r.applied.counts) ? "See why nothing changed" : "See why no changes were made"}</button>`;
+  const label = n === 1 ? (where === "bar" ? "Make this change" : "Make the line edit")
+    : where === "bar" ? `Make all ${n} changes` : `Make all ${n} line edits`;
+  return html`<button type="button" class="${cls}" data-apply>${label}</button>`;
+}
+function applyBarBody(r) {
+  // Only edits that would be made but for the flag: a bare note was never going to be made anyway.
+  const partial = (r.edits || []).filter(e => e.partial && usableEdit({ ...e, partial: false })).length;
+  const byHand = partial ? `${plural(partial, "line edit")} only partly ${partial === 1 ? "matches" : "match"} your essay, so make ${partial === 1 ? "it" : "them"} yourself.` : "";
+  if (!(r.edits || []).some(usableEdit)) return byHand ? html`<p class="hint">${byHand}</p>` : html``;
+  const a = r.applied;
+  const hint = applying.has(key(r)) ? "Making the changes now. The other tabs stay open to you meanwhile."
+    : a ? `Made ${a.counts.made} of ${plural(a.edits.length, "change")} on ${when(a.created)}.${a.made_up.length ? ` ${plural(detailCount(a.made_up), "made-up detail")} to replace.` : ""}`
+    : "Cuts and rewrites go in as written. Where an edit asks for a detail only you know, GaryAdmit writes one and marks it; a check looks for any it missed, and it can miss one too. 1 to 3 minutes."
+      + (byHand ? ` ${byHand}` : "");
+  return html`${applyBtnHtml(r, "bar")}<p class="hint">${hint}</p>`;
+}
+// Both buttons change label with the job, and one that had focus hands it to its replacement.
+function syncApply(r) {
+  for (const [sel, body] of [["#applyBar", applyBarBody(r)], ["#applyCta", applyBtnHtml(r, "cta")]]) {
+    const box = $(sel);
+    if (!box) continue;
+    const had = box.contains(document.activeElement);
+    mount(box, body);
+    const b = had && box.querySelector("button");
+    if (b) b.focus({ preventScroll: true });
+  }
+}
+const appliedPanelHtml = r => html`<div class="tabpanel" id="tab-applied" role="tabpanel" aria-labelledby="tabbtn-applied" tabindex="-1" hidden><section class="applied" id="applied">${r.applied ? appliedHtml(r.applied) : ""}</section></div>`;
+function addAppliedTab(r) {
+  if ($("#tabbtn-applied")) return;
+  const btn = fragment(tabBtnHtml("applied", "Changes made", false, {})).firstElementChild;
+  btn.classList.add("enter");
+  $("#tabbtn-edits").after(btn);
+  $("#tab-edits").after(fragment(appliedPanelHtml(r)));
+}
+
+function madeUpHtml(v) {
+  // The offsets count code points, as Python does; a JS string counts UTF-16 units, so an emoji would shift them.
+  const cp = Array.from(v.draft), out = [];
+  let pos = 0;
+  v.made_up.forEach((m, k) => {
+    if (m.start < pos || m.end > cp.length) return;  // the server never overlaps them; a hand-edited file might
+    const text = cp.slice(m.start, m.end).join("");
+    if (text !== m.text) return;  // a wrong highlight is worse than none; "Check these details" still lists it
+    out.push(cp.slice(pos, m.start).join(""));
+    const tip = m.source === "check" && !m.stands_for ? "Not in your original" : `Made up: stands in for ${m.stands_for || "a detail only you know"}`;
+    out.push(html`<mark class="madeup" data-m="${k}" title="${tip}">${text}</mark>`);
+    pos = m.end;
+  });
+  out.push(cp.slice(pos).join(""));
+  return out;
+}
+
+function appliedHtml(v, err) {
+  const c = v.counts, mu = v.made_up, fc = v.checks.fact_check || {}, nmu = detailCount(mu);
+  const lim = v.meta && v.meta.word_limit, over = v.checks.over_limit;
+  const drift = fc.voice_drift && ["medium", "high"].includes(fc.voice_drift.level) ? fc.voice_drift : null;
+  const none = c.made === 0;
+  const status = [`Made ${c.made} of ${plural(v.edits.length, "line edit")}.`];
+  if (c.unchanged) status.push(`${c.unchanged} left as written.`);
+  if (c.not_made) status.push(`${c.not_made} couldn't be made; “Edit by edit” says why.`);
+  const items = mu.map((m, k) => html`<li><button type="button" class="madeup-item" data-m="${k}"><mark class="madeup">${m.text}</mark>
+      <span class="madeup-for">${m.source !== "check" ? `Stands in for ${m.stands_for || "a detail only you know"}.`
+        : m.stands_for ? `Stands in for ${m.stands_for}. GaryAdmit marked part of it; the check for made-up details found the rest. ${m.why || ""}`
+        : `GaryAdmit didn't mark this itself; the check for made-up details found it. ${m.why || ""}`}</span></button></li>`);
+  const rows = v.edits.map(e => html`<li class="move"><div><span class="chip chip-neutral">${KIND[e.kind] || e.kind}</span></div>
+      ${e.status === "made"
+        ? html`<p class="move-target">“${e.original}”</p>${e.text ? html`<p class="move-new">${e.text}</p>` : html`<p><b>Cut.</b></p>`}`
+        : html`<p class="edit-orig">“${e.original}”</p><p class="hint">${e.status === "unchanged" ? `Left as written.${e.reason ? ` ${e.reason}` : ""}` : `Not made. ${e.reason}`}</p>`}</li>`);
+  return html`<div class="rev-head">
+      <h2 tabindex="-1">${!none ? "Your essay with the line edits made" : noTextChanged(c) ? "No text changed" : "None of the line edits could be made"}</h2>
+      <p class="rev-status">${status.join(" ")}</p>
+      ${drift ? html`<p class="hint">The check also found that some new lines sound less like you: ${drift.evidence}</p>` : ""}
+    </div>
+    ${err ? html`<div class="notice notice-error" role="alert">${icon("alert")}<div><b>Making the changes again didn't finish, so this is the earlier result.</b> ${err}</div></div>` : ""}
+    ${mu.length ? html`<div class="notice notice-warn">${icon("alert")}<div><b>GaryAdmit made up ${plural(nmu, "detail")}.</b> ${nmu === 1 ? "It's" : "They're"} highlighted in the essay below. Replace each one with what really happened, or cut it, before you use this essay.</div></div>` : ""}
+    ${fc.error ? html`<div class="notice notice-warn">${icon("alert")}<div>The check for made-up details that GaryAdmit didn't mark couldn't run (${fc.error}), so read every change against what really happened.</div></div>` : ""}
+    <div class="doc">
+      <div class="doc-bar">
+        <div class="seg-sm" role="group" aria-label="Show the essay or the changes"><button type="button" class="on" data-view="clean" aria-pressed="true">Essay</button><button type="button" data-view="changes" aria-pressed="false">Changes</button></div>
+        <span class="doc-count${over ? " over" : ""}">${v.checks.word_count}${lim ? " / " + lim : ""} words${over ? ", over the limit" : ""}</span>
+        <span class="spacer"></span>
+        ${none ? "" : html`<button type="button" class="btn btn-ghost btn-sm" id="appliedCopy" data-label="Copy" aria-label="Copy this essay">${icon("copy")}<span class="label">Copy</span></button>
+        <button type="button" class="btn btn-ghost btn-sm" id="appliedChat" aria-label="Use in chat" title="Use this version in Ask for changes">${icon("chat")}<span class="label">Use in chat</span></button>
+        <button type="button" class="btn btn-ghost btn-sm" id="appliedEdit">${icon("edit")}<span class="label">Edit and re-score</span></button>`}
+      </div>
+      <div class="draft" id="appliedView">${madeUpHtml(v)}</div>
+    </div>
+    ${mu.length ? html`<section class="section"><div class="section-head"><h3>Check these details</h3><span class="aside">Made up by GaryAdmit · select one to find it</span></div><ul class="madeups">${items}</ul></section>` : ""}
+    <details class="disclosure why"><summary>Edit by edit</summary><div class="disclosure-body"><ol class="moves">${rows}</ol></div></details>
+    <div class="actions"><button type="button" class="btn btn-secondary" data-apply>Make the changes again</button><span class="hint">Each run writes new details. Claude runs the check for unmarked details too, so it can miss one.</span></div>`;
+}
+const applyFailedHtml = err => html`<div class="rev-head"><h2 tabindex="-1">Make every line edit</h2></div>
+  <div class="notice notice-error" role="alert">${icon("alert")}<div><b>The changes didn't finish.</b> ${err}
+    <div class="notice-actions"><button type="button" class="btn btn-secondary btn-sm" data-apply>Try again</button></div></div></div>`;
+
+function paintApplying(p) {
+  const box = $("#applied");
+  if (!box) return;
+  let list = box.querySelector(".steps");
+  if (!list) {
+    mount(box, html`<div class="rev-head"><h2 tabindex="-1">Making the line edits</h2><p class="hint">1 to 3 minutes. The other tabs stay open to you meanwhile.</p></div><ol class="steps" tabindex="-1" role="log" aria-live="polite" aria-label="Progress of the line edits"></ol>`);
+    list = box.querySelector(".steps");
+    if (lostFocus()) list.focus({ preventScroll: true });  // the button that had focus is gone
+    // A live region filled in the task that inserts it, or while its tab is still hidden, often announces nothing.
+    setTimeout(() => syncSteps(list, p.steps, p.steps.length ? "Working" : "Starting the editor"), 150);
+    return;
+  }
+  syncSteps(list, p.steps, p.steps.length ? "Working" : "Starting the editor");
+}
+
+async function startApply() {
+  const r = current;
+  if (!r || applying.has(key(r)) || !(r.edits || []).some(usableEdit)) return;
+  const pending = { steps: [] };
+  applying.set(key(r), pending);
+  // The student may reopen this review mid-run, which puts a fresh copy on screen; update that copy too.
+  const live = () => (current && key(current) === key(r) ? current : null);
+  addAppliedTab(r);
+  setTabState("applied", "busy");
+  paintApplying(pending);
+  syncApply(r);
+  selectTab("applied", { focus: true });
+  const body = r.id ? { review_id: r.id } : { essay: r.essay, edits: r.edits, ...r.meta };
+  try {
+    const job = await startJob("/api/apply", body);
+    const v = await pollJob(job, j => { pending.steps = j.progress || []; if (live()) paintApplying(pending); });
+    applying.delete(key(r));
+    for (const x of new Set([r, live()])) if (x) x.applied = v;
+    const shown = live();
+    if (!shown) {
+      toast(v.counts.made ? "The line edits for another review are made. Open that review from History to see them."
+        : noTextChanged(v.counts) ? "No text changed in another review. Open that review from History; its notes say what to do."
+        : "None of the line edits for another review could be made. Open that review from History to see why.");
+      return;
+    }
+    // Focus still on the tab button would announce nothing, since finishTab stays quiet on the visible tab.
+    const refocus = lostFocus() || document.activeElement === $("#tabbtn-applied");
+    mount($("#applied"), appliedHtml(v));
+    if (refocus || lostFocus()) $("#applied h2").focus({ preventScroll: true });
+    syncApply(shown);
+    finishTab("applied", v.counts.made ? "Your essay with the line edits made is ready."
+      : noTextChanged(v.counts) ? "No text changed. The notes say what to do." : "None of the line edits could be made.");
+  } catch (e) {
+    applying.delete(key(r));
+    const shown = live();
+    if (!shown) { toast(`The line edits for another review didn't finish: ${errText(e)}`); return; }
+    const refocus = lostFocus();
+    mount($("#applied"), shown.applied ? appliedHtml(shown.applied, errText(e)) : applyFailedHtml(errText(e)));
+    if (refocus || lostFocus()) $("#applied h2").focus({ preventScroll: true });
+    syncApply(shown);
+    finishTab("applied", "The line edits didn't finish.");
+  }
+}
+
+function setAppliedView(name) {
+  const v = current && current.applied, box = $("#appliedView");
+  if (!v || !box) return;
+  mount(box, name === "clean" ? html`${madeUpHtml(v)}` : html`${diffHtml(v.diff)}`);
+  document.querySelectorAll("#applied [data-view]").forEach(b => { const on = b.dataset.view === name; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+}
+function showMadeUp(k) {
+  const clean = $('#applied [data-view="clean"]');
+  if (clean && !clean.classList.contains("on")) setAppliedView("clean");
+  document.querySelectorAll("#appliedView mark.madeup.active").forEach(m => { m.classList.remove("active"); m.removeAttribute("tabindex"); });
+  const m = $(`#appliedView mark.madeup[data-m="${CSS.escape(String(k))}"]`);
+  if (!m) return;
+  m.classList.add("active");
+  m.scrollIntoView({ block: "center", behavior: smooth() });
+  // The row that had focus is now off screen; focus on the mark reads its title to a screen reader.
+  m.tabIndex = -1;
+  m.focus({ preventScroll: true });
+}
+// Made-up details reach the chat only when the student hands it this version, so they can type the real ones there.
+function useInChat(draft, madeUp) {
+  if (chatting.has(key(current))) { toast("Wait for the chat's current change to finish, then try again."); return; }
+  if (working() !== draft) {
+    versions.push(draft);
+    versionMadeUp = [...new Set([...versionMadeUp, ...madeUp.map(m => m.text).filter(Boolean)])];
+    saveWorking(current); showWorking();
+  }
+  selectTab("chat");
+  $("#chatInput").focus({ preventScroll: true });
+  toast("Ask for changes now starts from this version. Tell it what really happened, and it swaps the made-up details for yours.");
+}
+
 // ---- chat edits ------------------------------------------------------------
 const SUGGEST = [
   ["Make the hook a 10/10", "Make the hook a 10/10"],
@@ -1322,6 +1552,8 @@ const SUGGEST = [
   ["Does this sound like me?", "Does this sound like a real 17-year-old wrote it? Point to the lines that don't."],
 ];
 const working = () => versions[versions.length - 1];
+// Made-up texts of every run sent to the chat; a later run replaces r.applied, but the working essay may still hold them.
+let versionMadeUp = [];
 const num = x => Number.isInteger(x) ? String(x) : x.toFixed(1);
 // Reopening a saved review loads a fresh copy, so reviews are matched by id rather than by object.
 const key = r => (r && r.id) || r;
@@ -1332,7 +1564,7 @@ function saveWorking(r) {
   if (!r.id) return;
   try {
     localStorage.setItem("ga-working-" + r.id, JSON.stringify({ turns: (r.chat || []).length,
-      revision: (r.revision && r.revision.created) || "", working: working() }));
+      revision: (r.revision && r.revision.created) || "", working: working(), made_up: versionMadeUp }));
   } catch (err) {}
 }
 function savedWorking(r) {
@@ -1342,6 +1574,14 @@ function savedWorking(r) {
     return s && s.turns === (r.chat || []).length && s.revision === ((r.revision && r.revision.created) || "")
       && typeof s.working === "string" ? s.working : null;
   } catch (err) { return null; }
+}
+// Read even when the saved working essay no longer matches, since chat turns built on that version keep its details.
+function savedMadeUp(r) {
+  if (!r.id) return [];
+  try {
+    const s = JSON.parse(localStorage.getItem("ga-working-" + r.id) || "null");
+    return s && Array.isArray(s.made_up) ? s.made_up.filter(x => typeof x === "string") : [];
+  } catch (err) { return []; }
 }
 
 function ratingHtml(g) {
@@ -1461,6 +1701,7 @@ function initChat(r) {
     if (applied(t)) versions.push(t.draft);
   });
   versions = [r.essay];
+  versionMadeUp = savedMadeUp(r);
   replay(turns.slice(0, early));
   if (rev && versions.length === 1) versions = [rev.draft];
   replay(turns.slice(early));
@@ -1664,6 +1905,7 @@ function render(r) {
   const dropped = readers.reduce((n, x) => n + (x._unverified_quotes_dropped || 0), 0);
   const nCompare = h2h.length + cal.length, nChat = (r.chat || []).length;
   const counts = { edits: r.edits.length, compare: nCompare, chat: nChat };
+  const tabs = TABS.filter(([k]) => k !== "applied" || hasApplied(r));
 
   mount($("#report"), html`
     <header class="report-head">
@@ -1677,7 +1919,7 @@ function render(r) {
       <details class="disclosure sm math"><summary>How this score was calculated</summary><p>${math}</p></details>
     </header>
     <div class="tabs"><div class="tablist" role="tablist" aria-label="Report sections">
-      ${TABS.map(([k, label], i) => html`<button type="button" class="tab" role="tab" id="tabbtn-${k}" data-tab="${k}" aria-controls="tab-${k}" aria-selected="${String(i === 0)}" tabindex="${i === 0 ? 0 : -1}">${label}${k in counts ? html`<span class="count"${counts[k] ? "" : html` hidden`}>${counts[k]}</span>` : ""}<span class="state" aria-hidden="true"></span><span class="sr-only sr-state"></span></button>`)}
+      ${tabs.map(([k, label], i) => tabBtnHtml(k, label, i === 0, counts))}
       <span class="tab-ind" aria-hidden="true"></span>
     </div></div>
 
@@ -1700,6 +1942,7 @@ function render(r) {
         ${dropped ? html`<p class="empty dropped">${dropped} reviewer claim${dropped > 1 ? "s were" : " was"} dropped because the quote did not appear in your essay.</p>` : ""}</section>
       <div class="actions">
         <button type="button" class="btn btn-primary" id="rewriteCta" data-goto="rewrite"><span class="label">${r.revision ? "See the edited essay" : "Make it a lot better"}</span>${icon("right")}</button>
+        <span id="applyCta">${applyBtnHtml(r, "cta")}</span>
         <button type="button" class="btn btn-secondary" id="reviseBtn">${icon("edit")}<span class="label">Edit and re-score</span></button>
       </div>
     </div>
@@ -1708,11 +1951,13 @@ function render(r) {
       <div class="edits-layout">
         <div class="doc doc-read"><div class="essay">${markedEssay(r.essay, r.edits, lt.hits)}</div></div>
         <aside class="editlist" aria-label="Line edits">
+          <div class="apply-bar" id="applyBar">${applyBarBody(r)}</div>
           <p class="legend"><span><span class="lg-mark lg-major"></span>Major</span><span><span class="lg-mark lg-minor"></span>Minor</span><span><span class="lg-lint"></span>Mechanical flag</span></p>
           ${edits.length ? html`<ol class="edit-cards">${edits}</ol>` : html`<p class="empty">No edits.</p>`}
         </aside>
       </div>
     </div>
+    ${hasApplied(r) ? appliedPanelHtml(r) : ""}
 
     <div class="tabpanel" id="tab-rewrite" role="tabpanel" aria-labelledby="tabbtn-rewrite" tabindex="-1" hidden>
       <section class="better" id="better">${r.revision ? revisionHtml(r.revision) : betterIntro()}</section>
@@ -1734,6 +1979,8 @@ function render(r) {
   countUp($("#scoreNum"), Math.round(r.score));
   const p = revising.get(key(r));
   if (p) { setTabState("rewrite", "busy"); paintRevising(p); }
+  const ap = applying.get(key(r));
+  if (ap) { setTabState("applied", "busy"); paintApplying(ap); }
   const c = chatting.get(key(r));
   if (c) c.paint();
   if (unsent.has(key(r))) {
@@ -1748,10 +1995,10 @@ function toggleCat(head) {
   head.setAttribute("aria-expanded", String(open));
 }
 
-function copyText(btn, text) {
+function copyText(btn, text, note) {
   const label = btn.querySelector(".label");
   (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject(new Error("no clipboard"))).then(() => {
-    toast(`Copied ${words(text)} words.`);
+    toast(`Copied ${words(text)} words.${note ? " " + note : ""}`);
     if (!label) return;
     clearTimeout(btn._reset);
     label.textContent = "Copied";
@@ -1845,7 +2092,7 @@ document.addEventListener("click", e => {
   const card = t.closest(".edit"); if (card) activate(card.dataset.i, "essay");
   if (t.closest("#reviseBtn") && current) loadIntoCompose(current.essay, "the reviewed essay", current.meta);
   if (t.closest("#betterBtn")) startRevision();
-  const view = t.closest("[data-view]");
+  const view = t.closest("#better [data-view]");
   if (view && current && current.revision) {
     const v = current.revision;
     mount($("#draftView"), view.dataset.view === "clean" ? html`${withAsks(v.draft)}` : html`${diffHtml(v.diff)}`);
@@ -1854,6 +2101,20 @@ document.addEventListener("click", e => {
   const copy = t.closest("#copyDraft");
   if (copy && current && current.revision) copyText(copy, current.revision.draft);
   if (t.closest("#editDraft") && current && current.revision) loadIntoCompose(current.revision.draft, "the edited essay", current.meta);
+  if (t.closest("[data-apply]")) startApply();
+  const aview = t.closest("#applied [data-view]"); if (aview) setAppliedView(aview.dataset.view);
+  const made = t.closest(".madeup-item"); if (made) showMadeUp(made.dataset.m);
+  const acopy = t.closest("#appliedCopy");
+  if (acopy && current && current.applied) {
+    const n = detailCount(current.applied.made_up);
+    copyText(acopy, current.applied.draft, n ? `It still has ${plural(n, "made-up detail")} to replace.` : "");
+  }
+  if (t.closest("#appliedChat") && current && current.applied) useInChat(current.applied.draft, current.applied.made_up);
+  if (t.closest("#appliedEdit") && current && current.applied) {
+    const n = detailCount(current.applied.made_up);
+    loadIntoCompose(current.applied.draft, "the essay with the line edits made", current.meta);
+    if (n) toast(`It still has ${plural(n, "made-up detail")}. Replace ${n === 1 ? "it" : "them"} before you re-score.`);
+  }
   if (t.closest("#chatSend")) sendChat($("#chatInput").value, "", true);
   const chip = t.closest("[data-say]"); if (chip) sendChat(chip.dataset.say, chip.dataset.advice);
   const act = t.closest("[data-act]");
@@ -1869,7 +2130,11 @@ document.addEventListener("click", e => {
     toast(versions.length > 1 ? `Back to version ${versions.length}.` : "Back to the starting essay.");
   }
   const chatCopy = t.closest("#chatCopy");
-  if (chatCopy) copyText(chatCopy, working());
+  if (chatCopy) {
+    const texts = [...(current && current.applied ? current.applied.made_up.map(m => m.text) : []), ...versionMadeUp];
+    const w = working(), n = new Set(texts.filter(x => x && w.includes(x))).size;
+    copyText(chatCopy, w, n ? `It still has ${plural(n, "made-up detail")} to replace.` : "");
+  }
   if (t.closest("#chatRescore") && current) loadIntoCompose(working(), "the working essay", current.meta);
   const row = t.closest("#history .row"); if (row) openSaved(row);
   if (t.closest("#histRetry")) loadHistory();
