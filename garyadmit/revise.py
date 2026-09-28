@@ -211,7 +211,9 @@ def judge(base: str, candidate: str, meta: dict, model: str,
     }
 
 
-def fidelity(original: str, revised: str, model: str) -> dict:
+def fidelity(original: str, revised: str, model: str, *, keep_heads: bool = False) -> dict:
+    """keep_heads keeps a drifted quote whose located head the original says too, for a caller that can carry the
+    head on to the end of the change; the rewrite and the chat have no changes to carry it to."""
     r = llm.ask_json(rubric.FIDELITY_SYSTEM, rubric.fidelity_prompt(original, revised), rubric.FIDELITY_SCHEMA, model=model)
     brackets = [(b.start(), b.end()) for b in BRACKET.finditer(revised)]
     invented = []
@@ -221,9 +223,11 @@ def fidelity(original: str, revised: str, model: str) -> dict:
             continue  # the checker quoted something the draft does not say
         if any(a <= loc[0] and loc[1] <= b for a, b in brackets):
             continue  # a question for the student; what it presupposes is checked below
-        if scoring.locate(original, revised[loc[0]:loc[1]], prefix=False):
+        head_only = not scoring.locate(revised, item.get("text", ""), prefix=False)
+        if scoring.locate(original, revised[loc[0]:loc[1]], prefix=False) and not (keep_heads and head_only):
             continue  # the original says it too, all of it: a new clause on an old sentence still counts
-        invented.append({"text": revised[loc[0]:loc[1]], "why_new": item.get("why_new", "")})
+        invented.append({"text": revised[loc[0]:loc[1]], "why_new": item.get("why_new", ""), "quote": item.get("text", ""),
+                         "head_only": head_only})
     in_draft = {b[1:-1].strip().lower(): b for b in BRACKET.findall(revised)}
     assumptions = []
     for a in r.get("bracket_assumptions", []):

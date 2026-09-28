@@ -68,7 +68,9 @@ def _checked_edits(essay: str, raw: dict) -> list[dict]:
         if any(not (loc[1] <= a or loc[0] >= b) for a, b in seen):
             continue  # overlapping spans cannot both be highlighted inline
         seen.append(loc)
-        edits.append({**e, "start": loc[0], "end": loc[1], "original": essay[loc[0]:loc[1]]})
+        # Only the head of the quote matched: making this edit as written would leave the quote's tail behind.
+        partial = not scoring.locate(essay, e.get("original", ""), prefix=False)
+        edits.append({**e, "start": loc[0], "end": loc[1], "original": essay[loc[0]:loc[1]], "partial": partial})
     edits.sort(key=lambda e: e["start"])
     return edits
 

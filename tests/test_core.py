@@ -1,4 +1,5 @@
 import json
+import re
 import threading
 import time
 import urllib.error
@@ -122,6 +123,8 @@ class FakeLLM:
         self.aspect_mode = "new"
         self.fail_rating = False
         self.drifts = []  # voice-drift levels for successive fact checks; "low" once empty
+        self.apply_answers = []  # one list of answers per apply-editor call; empty means a filler answer per id
+        self.apply_prompts = []
 
     def __call__(self, system, prompt, schema, model, effort):
         props = schema["properties"]
@@ -135,6 +138,13 @@ class FakeLLM:
             return {"reply": "Opened on the exploding dumpling.", "edit": True, "revised_essay": draft,
                     "changes": ["Opened on the exploding dumpling"], "aspect": self.chat_aspect,
                     "category": self.chat_category, "target": self.chat_target, "questions": []}
+        if "applied" in props:
+            self.apply_prompts.append(prompt)
+            if self.apply_answers:
+                return {"applied": self.apply_answers.pop(0)}
+            return {"applied": [{"id": int(n), "text": "She hummed as she worked.",
+                                 "made_up": [{"text": "hummed", "stands_for": "what she did"}]}
+                                for n in re.findall(r'<edit id="(\d+)">', prompt)]}
         if "score_1" in props:
             if self.fail_rating:
                 raise llm.LLMError("rating timed out")

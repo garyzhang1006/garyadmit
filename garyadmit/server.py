@@ -1,5 +1,5 @@
 """Local web app. Stdlib only; binds to 127.0.0.1. Essays leave the machine only
-through the Claude calls; the page itself also loads its fonts from Google Fonts."""
+through the Claude calls, and the page loads nothing from other sites."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from pathlib import Path
 from . import llm
 from . import review as review_mod
 from .review import get_corpus, review
+from .apply import apply_all, flag_partial
 from .chat import chat
 from .revise import revise
 
@@ -98,6 +99,26 @@ def _do_chat(req: dict, progress) -> dict:
     return result
 
 
+def _do_apply(req: dict, progress) -> dict:
+    rid = str(req.get("review_id") or "")
+    saved, path = None, None
+    if rid:
+        path = _history_file(rid)
+        if not path:
+            raise ValueError("That saved review was not found. Run the review again, then make the changes.")
+        saved = _load_saved(path)
+    meta = saved["meta"] if saved else _meta_from(req)
+    edits = saved.get("edits") if saved else req.get("edits")
+    result = apply_all(saved["essay"] if saved else str(req.get("essay") or ""), edits if isinstance(edits, list) else [],
+                       meta=meta, model="sonnet" if req.get("fast") else None, progress=progress)
+    if path:
+        with _lock:  # the same lock as the other write-backs, so they never interleave
+            current = json.loads(path.read_text())
+            current["applied"] = result
+            path.write_text(json.dumps(current, indent=1))
+    return result
+
+
 def _run_job(job_id: str, kind: str, req: dict, corpus_path: str | None) -> None:
     def progress(msg: str) -> None:
         with _lock:
@@ -105,7 +126,7 @@ def _run_job(job_id: str, kind: str, req: dict, corpus_path: str | None) -> None
 
     try:
         result = (_do_revise(req, progress) if kind == "revise" else _do_chat(req, progress) if kind == "chat"
-                  else _do_review(req, corpus_path, progress))
+                  else _do_apply(req, progress) if kind == "apply" else _do_review(req, corpus_path, progress))
         with _lock:
             _jobs[job_id].update(status="done", result=result)
     except (llm.LLMError, ValueError) as err:
@@ -167,6 +188,8 @@ def make_handler(corpus_path: str | None):
                     return self._json(404, {"error": "not found"})
                 saved = _load_saved(f)
                 saved.setdefault("id", name)  # reviews saved before ids existed
+                if isinstance(saved.get("edits"), list):
+                    saved["edits"] = flag_partial(str(saved.get("essay") or ""), saved["edits"])
                 return self._json(200, saved)
             if path == "/api/status":
                 try:
@@ -179,7 +202,7 @@ def make_handler(corpus_path: str | None):
         def do_POST(self):
             if not self._addressed_locally():
                 return self._json(403, {"error": "forbidden host"})
-            kind = {"/api/review": "review", "/api/revise": "revise", "/api/chat": "chat"}.get(self.path)
+            kind = {"/api/review": "review", "/api/revise": "revise", "/api/chat": "chat", "/api/apply": "apply"}.get(self.path)
             if not kind:
                 return self._json(404, {"error": "not found"})
             # Requiring JSON forces a CORS preflight for cross-site pages, which this server

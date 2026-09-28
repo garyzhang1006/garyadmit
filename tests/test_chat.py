@@ -156,6 +156,7 @@ def test_saved_reviews_are_read_under_the_write_lock(fake, monkeypatch):
     monkeypatch.setattr(pathlib.Path, "read_text", spy)
     server._do_chat({"review_id": rid, "message": HOOK}, lambda s: None)
     server._do_revise({"review_id": rid}, lambda s: None)
+    server._do_apply({"review_id": rid}, lambda s: None)
     assert seen and all(seen)
 
 
