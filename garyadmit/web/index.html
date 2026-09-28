@@ -3,293 +3,727 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>GaryAdmit</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+// Apply a saved theme before first paint so the page never flashes the other one.
+try { const t = localStorage.getItem("ga-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
 <style>
 :root {
-  --paper: #f4efe4;
-  --sheet: #fbf8f1;
-  --ink: #1d1a16;
-  --muted: #6b645a;
-  --rule: #d9d0bf;
-  --red: #c22f1f;
-  --red-soft: rgba(194, 47, 31, 0.12);
-  --amber: #b7791f;
-  --amber-soft: rgba(183, 121, 31, 0.16);
-  --green: #2f6b3a;
-  --green-soft: rgba(47, 107, 58, 0.12);
-  --blue: #2b4c7e;
-  --shadow: 0 1px 0 rgba(0,0,0,.04), 0 12px 30px -18px rgba(40, 30, 10, .35);
-  --serif: "Newsreader", Georgia, "Times New Roman", serif;
-  --display: "Fraunces", Georgia, serif;
-  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+  --bg: oklch(0.982 0.003 40);
+  --surface: oklch(1 0 0);
+  --raised: oklch(0.963 0.004 40);
+  --sunken: oklch(0.952 0.005 40);
+  --thumb: oklch(1 0 0);
+  --line: oklch(0.91 0.005 40);
+  --line-strong: oklch(0.83 0.008 40);
+  --control: oklch(0.64 0.01 40);  /* input and switch edges: 3:1 on surface and bg */
+  --bar: oklch(0.78 0.01 40);
+  --ink: oklch(0.225 0.01 40);
+  --ink-2: oklch(0.38 0.01 40);
+  --muted: oklch(0.5 0.01 40);
+  --accent: oklch(0.52 0.15 258);
+  --accent-hover: oklch(0.45 0.15 258);
+  --accent-soft: oklch(0.52 0.15 258 / 0.1);
+  --select: oklch(0.52 0.15 258 / 0.2);
+  --brand: oklch(0.58 0.19 33);
+  --red: oklch(0.52 0.17 27);
+  --red-soft: oklch(0.63 0.19 27 / 0.12);
+  --green: oklch(0.49 0.11 152);
+  --green-soft: oklch(0.62 0.13 152 / 0.14);
+  --amber: oklch(0.5 0.1 68);
+  --amber-soft: oklch(0.8 0.14 80 / 0.24);
+  --mark: oklch(0.94 0.09 98);
+  --mark-active: oklch(0.87 0.13 95);
+  --scrim: oklch(0.2 0.01 40 / 0.36);
+  --shadow-pop: 0 2px 8px oklch(0.2 0.02 40 / 0.16);
+
+  /* Times New Roman everywhere, by request. It ships with macOS, iOS and Windows; Tinos and Liberation Serif
+     are its metric twins on ChromeOS and Linux, so nothing is downloaded. Sizes run about 1px above a sans scale
+     because Times has a small x-height. */
+  --font-text: "Times New Roman", Times, Tinos, "Liberation Serif", serif;
+  --font-ui: var(--font-text);
+  --fs-xs: 0.875rem;
+  --fs-sm: 0.9375rem;
+  --fs-md: 1.0625rem;
+  --fs-lg: 1.1875rem;
+  --fs-xl: 1.375rem;
+  --fs-2xl: 1.75rem;
+  --fs-essay: 1.25rem;
+  --fs-score: 4.5rem;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+  --r1: 6px; --r2: 10px; --pill: 999px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --t1: 150ms; --t2: 200ms; --t3: 250ms;
+  --header-h: 56px;
+  --tabs-h: 49px;
+  --z-sticky: 10; --z-header: 20; --z-toast: 60;
+  --i-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+  --i-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E");
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #16140f; --sheet: #1e1b15; --ink: #ece5d6; --muted: #a39a8a; --rule: #3a342a;
-    --red: #ff6a55; --red-soft: rgba(255,106,85,.16); --amber: #e0a646; --amber-soft: rgba(224,166,70,.18);
-    --green: #7cc48a; --green-soft: rgba(124,196,138,.14); --blue: #8fb0e6;
-    --shadow: 0 12px 30px -18px rgba(0,0,0,.8);
+    color-scheme: dark;
+    --bg: oklch(0.175 0.005 40);
+    --surface: oklch(0.212 0.006 40);
+    --raised: oklch(0.25 0.007 40);
+    --sunken: oklch(0.19 0.005 40);
+    --thumb: oklch(0.32 0.008 40);
+    --line: oklch(0.3 0.007 40);
+    --line-strong: oklch(0.4 0.009 40);
+    --control: oklch(0.55 0.01 40);
+    --bar: oklch(0.47 0.01 40);
+    --ink: oklch(0.93 0.005 40);
+    --ink-2: oklch(0.83 0.006 40);
+    --muted: oklch(0.72 0.008 40);
+    --accent: oklch(0.76 0.11 255);
+    --accent-hover: oklch(0.83 0.09 255);
+    --accent-soft: oklch(0.76 0.11 255 / 0.14);
+    --select: oklch(0.76 0.11 255 / 0.3);
+    --brand: oklch(0.7 0.16 38);
+    --red: oklch(0.74 0.14 25);
+    --red-soft: oklch(0.66 0.17 25 / 0.18);
+    --green: oklch(0.77 0.12 152);
+    --green-soft: oklch(0.66 0.13 152 / 0.18);
+    --amber: oklch(0.81 0.12 78);
+    --amber-soft: oklch(0.76 0.13 78 / 0.17);
+    --mark: oklch(0.4 0.06 95 / 0.6);
+    --mark-active: oklch(0.52 0.09 95 / 0.75);
+    --scrim: oklch(0.05 0 0 / 0.55);
+    --shadow-pop: 0 2px 8px oklch(0 0 0 / 0.5);
   }
 }
-* { box-sizing: border-box; }
-html, body { margin: 0; }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: oklch(0.175 0.005 40);
+  --surface: oklch(0.212 0.006 40);
+  --raised: oklch(0.25 0.007 40);
+  --sunken: oklch(0.19 0.005 40);
+  --thumb: oklch(0.32 0.008 40);
+  --line: oklch(0.3 0.007 40);
+  --line-strong: oklch(0.4 0.009 40);
+  --control: oklch(0.55 0.01 40);
+  --bar: oklch(0.47 0.01 40);
+  --ink: oklch(0.93 0.005 40);
+  --ink-2: oklch(0.83 0.006 40);
+  --muted: oklch(0.72 0.008 40);
+  --accent: oklch(0.76 0.11 255);
+  --accent-hover: oklch(0.83 0.09 255);
+  --accent-soft: oklch(0.76 0.11 255 / 0.14);
+  --select: oklch(0.76 0.11 255 / 0.3);
+  --brand: oklch(0.7 0.16 38);
+  --red: oklch(0.74 0.14 25);
+  --red-soft: oklch(0.66 0.17 25 / 0.18);
+  --green: oklch(0.77 0.12 152);
+  --green-soft: oklch(0.66 0.13 152 / 0.18);
+  --amber: oklch(0.81 0.12 78);
+  --amber-soft: oklch(0.76 0.13 78 / 0.17);
+  --mark: oklch(0.4 0.06 95 / 0.6);
+  --mark-active: oklch(0.52 0.09 95 / 0.75);
+  --scrim: oklch(0.05 0 0 / 0.55);
+  --shadow-pop: 0 2px 8px oklch(0 0 0 / 0.5);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--header-h) + var(--tabs-h) + var(--s4)); }
 body {
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--serif);
-  font-size: 18px;
-  line-height: 1.55;
-  -webkit-font-smoothing: antialiased;
-  background-image: radial-gradient(rgba(120,100,60,.05) 1px, transparent 1px);
-  background-size: 4px 4px;
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 400 var(--fs-md)/1.55 var(--font-ui);
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
 }
-a { color: var(--blue); }
-.wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px 80px; position: relative; }
-header.top {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-  padding: 26px 0 18px; border-bottom: 2px solid var(--ink); margin-bottom: 28px;
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; text-wrap: balance; }
+p, figure, blockquote { margin: 0; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:hover { color: var(--accent-hover); }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[tabindex="-1"]:focus { outline: none; }
+::selection { background: var(--select); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.tnum { font-variant-numeric: tabular-nums; }
+.spacer { flex: 1; }
+.icon { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.hint { font-size: var(--fs-xs); color: var(--muted); line-height: 1.5; }
+.empty { color: var(--muted); font-size: var(--fs-sm); }
+
+/* header */
+.top { position: sticky; top: 0; z-index: var(--z-header); height: var(--header-h); background: var(--bg); border-bottom: 1px solid var(--line); }
+.top-inner { max-width: 1200px; height: 100%; margin: 0 auto; padding: 0 var(--s5); display: flex; align-items: center; gap: var(--s2); }
+.brand { font-family: var(--font-text); font-weight: 600; font-size: 1.25rem; letter-spacing: -0.015em; }
+.brand span { color: var(--brand); }
+.corpus { margin-right: var(--s3); font-size: var(--fs-sm); color: var(--muted); }
+#themeBtn .icon { display: none; }
+#themeBtn[data-mode="auto"] .i-auto, #themeBtn[data-mode="light"] .i-light, #themeBtn[data-mode="dark"] .i-dark { display: block; }
+
+/* buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
+  min-height: 36px; padding: 0 var(--s4); border: 1px solid transparent; border-radius: var(--r1);
+  font-size: var(--fs-sm); font-weight: 500; line-height: 1.2; white-space: nowrap; text-decoration: none; user-select: none;
+  transition: background-color var(--t1) var(--ease), border-color var(--t1) var(--ease), color var(--t1) var(--ease), transform var(--t1) var(--ease);
 }
-.brand { font-family: var(--display); font-weight: 800; font-size: 34px; letter-spacing: -0.02em; }
-.brand span { color: var(--red); }
-.tagline { font-family: var(--mono); font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; }
-.top-right { display: flex; gap: 14px; align-items: center; font-family: var(--mono); font-size: 12px; color: var(--muted); }
-select, input, textarea, button { font: inherit; color: inherit; }
-.btn-link { background: none; border: 1px solid var(--rule); padding: 6px 10px; border-radius: 2px; cursor: pointer; font-family: var(--mono); font-size: 12px; }
-.btn-link:hover { border-color: var(--ink); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { cursor: not-allowed; opacity: 0.5; }
+.btn-primary { background: var(--ink); color: var(--bg); }
+.btn-primary:hover:not(:disabled) { background: color-mix(in oklch, var(--ink) 84%, var(--bg)); }
+.btn-secondary { background: var(--surface); border-color: var(--line-strong); color: var(--ink); }
+.btn-secondary:hover:not(:disabled) { background: var(--raised); }
+.btn-ghost { background: transparent; color: var(--ink-2); }
+.btn-ghost:hover:not(:disabled) { background: var(--raised); color: var(--ink); }
+.btn-lg { min-height: 44px; padding: 0 var(--s5); font-size: var(--fs-md); }
+.btn-sm { min-height: 30px; padding: 0 var(--s3); }
+.btn-icon { width: 36px; padding: 0; }
+.btn[aria-pressed="true"] { background: var(--raised); border-color: var(--line-strong); color: var(--ink); }
+.linkbtn { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.linkbtn:hover { color: var(--accent-hover); }
+.spinner { display: none; width: 14px; height: 14px; border: 2px solid color-mix(in oklch, currentColor 30%, transparent); border-top-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; }
 
-.compose { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; }
-.sheet { background: var(--sheet); box-shadow: var(--shadow); border: 1px solid var(--rule); }
-.compose textarea {
-  width: 100%; min-height: 62vh; resize: vertical; border: 0; outline: none; background: transparent;
-  padding: 36px 44px; font-family: var(--serif); font-size: 19px; line-height: 1.7;
-  background-image: linear-gradient(to right, transparent 30px, var(--red-soft) 30px, var(--red-soft) 31px, transparent 31px);
+/* fields */
+.field { display: grid; gap: var(--s2); }
+.field > label, .field-label { font-size: var(--fs-sm); font-weight: 500; color: var(--ink-2); }
+.field .opt { font-weight: 400; color: var(--muted); }
+.input {
+  width: 100%; min-height: 40px; padding: var(--s2) var(--s3);
+  background: var(--surface); border: 1px solid var(--control); border-radius: var(--r1);
+  font-size: var(--fs-md); line-height: 1.45;
+  transition: border-color var(--t1) var(--ease), box-shadow var(--t1) var(--ease);
 }
-.sheet-foot { display: flex; justify-content: space-between; padding: 10px 16px; border-top: 1px solid var(--rule); font-family: var(--mono); font-size: 12px; color: var(--muted); }
-.sheet-foot .over { color: var(--red); font-weight: 500; }
-.side label { display: block; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 18px 0 6px; }
-.side label:first-child { margin-top: 0; }
-.side input[type=text], .side input[type=number], .side textarea {
-  width: 100%; background: var(--sheet); border: 1px solid var(--rule); padding: 9px 11px; border-radius: 2px; font-size: 16px;
+.input:hover, #chatInput:hover:not([readonly], :focus) { border-color: color-mix(in oklch, var(--control) 55%, var(--ink)); }
+.input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
+textarea.input { resize: vertical; min-height: 84px; }
+.seg { position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; background: var(--sunken); border: 1px solid var(--line); border-radius: 9px; }
+.seg::before { content: ""; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); background: var(--thumb); border-radius: var(--r1); box-shadow: 0 1px 3px oklch(0.2 0.02 40 / 0.14); transition: transform var(--t3) var(--ease); }
+.seg[data-v="supplement"]::before { transform: translateX(100%); }
+.seg > button { position: relative; min-height: 34px; padding: 0 var(--s2); border: 0; border-radius: var(--r1); background: transparent; color: var(--muted); font-size: var(--fs-sm); font-weight: 500; transition: color var(--t2) var(--ease); }
+.seg > button:hover { color: var(--ink-2); }
+.seg > button.on { color: var(--ink); }
+.seg-sm { display: inline-flex; padding: 2px; background: var(--sunken); border: 1px solid var(--line); border-radius: 8px; }
+.seg-sm > button { min-height: 28px; padding: 0 var(--s3); border: 0; border-radius: var(--r1); background: transparent; color: var(--muted); font-size: var(--fs-sm); font-weight: 500; transition: background-color var(--t2) var(--ease), color var(--t2) var(--ease); }
+.seg-sm > button:hover { color: var(--ink); }
+.seg-sm > button.on { background: var(--thumb); color: var(--ink); box-shadow: 0 1px 2px oklch(0.2 0.02 40 / 0.14); }
+.switch { position: relative; display: flex; gap: var(--s3); align-items: flex-start; cursor: pointer; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch-track { position: relative; flex: none; width: 36px; height: 22px; margin-top: 1px; border-radius: var(--pill); background: var(--control); transition: background-color var(--t2) var(--ease); }
+.switch-track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px oklch(0 0 0 / 0.25); transition: transform var(--t2) var(--ease), background-color var(--t2) var(--ease); }
+.switch input:checked + .switch-track { background: var(--ink); }
+.switch input:checked + .switch-track::after { transform: translateX(14px); background: var(--bg); }
+.switch input:focus-visible + .switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
+.switch-text { display: grid; gap: 2px; }
+.switch-label { font-size: var(--fs-sm); font-weight: 500; }
+
+/* shared pieces */
+.chip { display: inline-flex; align-items: center; gap: var(--s1); height: 22px; padding: 0 var(--s2); border-radius: var(--pill); font-size: var(--fs-xs); font-weight: 600; line-height: 1; white-space: nowrap; vertical-align: 2px; }
+.chip .icon { width: 13px; height: 13px; stroke-width: 2.4; }
+.chip-major, .chip-loss { background: var(--red-soft); color: var(--red); }
+.chip-minor, .chip-split { background: var(--amber-soft); color: var(--amber); }
+.chip-win { background: var(--green-soft); color: var(--green); }
+.chip-info, .chip-neutral { background: var(--raised); color: var(--ink-2); }
+.chip-you { background: var(--ink); color: var(--bg); }
+.notice { display: flex; gap: var(--s3); align-items: flex-start; padding: var(--s3) var(--s4); border-radius: var(--r2); font-size: var(--fs-sm); line-height: 1.5; color: var(--ink); }
+.notice > .icon { width: 18px; height: 18px; margin-top: 1px; }
+.notice ul { margin: var(--s1) 0 0; padding-left: 18px; }
+.notice-error { background: var(--red-soft); } .notice-error > .icon { color: var(--red); }
+.notice-warn { background: var(--amber-soft); } .notice-warn > .icon { color: var(--amber); }
+.notice-actions { margin-top: var(--s2); }
+.err { padding: var(--s3) var(--s4); border-radius: var(--r2); background: var(--red-soft); font-size: var(--fs-sm); }
+blockquote.quote { margin-top: var(--s2); padding-left: var(--s4); font-family: var(--font-text); font-style: italic; font-size: var(--fs-md); line-height: 1.6; color: var(--ink); }
+.section { margin-top: var(--s7); }
+.section:first-child { margin-top: 0; }
+.section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s1) var(--s4); margin-bottom: var(--s4); padding-bottom: var(--s2); border-bottom: 1px solid var(--line); }
+.section-head h2 { font-size: var(--fs-lg); }
+.section-head h3 { font-size: var(--fs-md); }
+.section-head .aside { font-size: var(--fs-sm); color: var(--muted); }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s6) var(--s7); }
+.grid-2.wide-left { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+.grid-2 > .section { margin-top: 0; }
+details.disclosure { border-top: 1px solid var(--line); }
+details.disclosure > summary { display: flex; align-items: center; gap: var(--s2); min-height: 48px; list-style: none; cursor: pointer; font-weight: 600; }
+details.disclosure > summary::-webkit-details-marker { display: none; }
+details.disclosure > summary::before { content: ""; flex: none; width: 16px; height: 16px; background: currentColor; -webkit-mask: var(--i-chev) center / 16px no-repeat; mask: var(--i-chev) center / 16px no-repeat; transition: transform var(--t2) var(--ease); }
+details.disclosure[open] > summary::before { transform: rotate(90deg); }
+details.disclosure > summary:hover { color: var(--accent); }
+details.disclosure.sm { border-top: 0; }
+details.disclosure.sm > summary { min-height: 36px; font-size: var(--fs-sm); font-weight: 500; color: var(--ink-2); }
+details.disclosure.sm > summary:hover { color: var(--accent); }
+.disclosure-body { padding: var(--s2) 0 var(--s5); }
+details.disclosure[open] > :not(summary) { animation: fade-up var(--t2) var(--ease); }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.steps li { position: relative; padding: 6px 0 6px 28px; font-size: var(--fs-sm); line-height: 1.45; color: var(--ink-2); }
+.steps li::before { content: ""; position: absolute; left: 1px; top: 8px; width: 16px; height: 16px; background: var(--green); -webkit-mask: var(--i-check) center / 16px no-repeat; mask: var(--i-check) center / 16px no-repeat; }
+.steps li.wait { color: var(--ink); }
+.steps li.wait::before { left: 2px; top: 9px; width: 14px; height: 14px; background: none; -webkit-mask: none; mask: none; border: 2px solid var(--line-strong); border-top-color: var(--ink); border-radius: 50%; animation: spin 0.9s linear infinite; }
+.steps li.enter { animation: rise var(--t3) var(--ease); }
+
+/* views */
+.page { max-width: 1200px; margin: 0 auto; padding: var(--s6) var(--s5) var(--s8); }
+.view.enter { animation: view-in var(--t3) var(--ease); }
+
+/* compose */
+.compose { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--s6); align-items: start; }
+.compose-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2) var(--s4); margin-bottom: var(--s4); }
+.compose-head h1 { font-size: var(--fs-2xl); }
+.back { margin: 0 0 var(--s2) calc(-1 * var(--s3)); }
+.restored { font-size: var(--fs-sm); color: var(--muted); }
+#errBox:not(:empty) { margin-bottom: var(--s4); }
+.doc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r2); }
+#essay {
+  display: block; width: 100%; min-height: 62vh; padding: var(--s7) var(--s7) var(--s6);
+  border: 0; border-radius: var(--r2) var(--r2) 0 0; background: transparent; resize: none; overflow: hidden;
+  font-family: var(--font-text); font-size: var(--fs-essay); line-height: 1.7;
 }
-.side textarea { min-height: 84px; resize: vertical; }
-.seg { display: flex; border: 1px solid var(--ink); }
-.seg button { flex: 1; border: 0; background: transparent; padding: 8px; cursor: pointer; font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
-.seg button.on { background: var(--ink); color: var(--paper); }
-.check { display: flex; gap: 8px; align-items: center; font-size: 15px; margin-top: 14px; }
-.check label { all: unset; cursor: pointer; }
-.go {
-  margin-top: 24px; width: 100%; padding: 14px; border: 0; background: var(--red); color: #fff; cursor: pointer;
-  font-family: var(--display); font-weight: 600; font-size: 20px; letter-spacing: .01em; box-shadow: 4px 4px 0 var(--ink);
-  transition: transform .08s, box-shadow .08s;
-}
-.go:hover { transform: translate(-1px,-1px); box-shadow: 5px 5px 0 var(--ink); }
-.go:active { transform: translate(3px,3px); box-shadow: 1px 1px 0 var(--ink); }
-.go:disabled { opacity: .5; cursor: wait; }
-.go.inline { width: auto; padding: 12px 22px; }
-.note { font-size: 14px; color: var(--muted); margin-top: 18px; line-height: 1.5; border-left: 3px solid var(--red); padding-left: 12px; }
+#essay:focus { outline: none; }
+.compose-doc:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+#essay[aria-invalid="true"] { caret-color: var(--red); }
+@supports (field-sizing: content) { #essay { field-sizing: content; } }
+.doc-foot { position: sticky; bottom: 0; display: flex; align-items: center; gap: var(--s4); padding: var(--s3) var(--s5); background: var(--surface); border-top: 1px solid var(--line); border-radius: 0 0 var(--r2) var(--r2); font-size: var(--fs-sm); color: var(--muted); }
+.meter { flex: 1; height: 4px; border-radius: var(--pill); background: var(--sunken); overflow: hidden; }
+.meter > i { display: block; width: 100%; height: 100%; background: var(--ink-2); transform: scaleX(0); transform-origin: left; transition: transform var(--t3) var(--ease), background-color var(--t2) var(--ease); }
+.meter.near > i { background: var(--amber); }
+.meter.over > i { background: var(--red); }
+#wl .over { color: var(--red); font-weight: 600; }
+.field-msg { display: flex; gap: var(--s2); align-items: flex-start; margin-top: var(--s3); font-size: var(--fs-sm); color: var(--red); }
+.field-msg .icon { margin-top: 2px; }
+.settings { position: sticky; top: calc(var(--header-h) + var(--s5)); display: grid; gap: var(--s5); padding-top: 52px; }
+.go-wrap { display: grid; gap: var(--s3); padding-top: var(--s2); }
+.go { width: 100%; }
+.go kbd { padding: 3px 6px; border-radius: 4px; background: color-mix(in oklch, var(--bg) 16%, transparent); color: color-mix(in oklch, var(--bg) 78%, transparent); font: 500 var(--fs-xs)/1 var(--font-ui); }
+.go[aria-busy="true"] kbd { display: none; }
+.go[aria-busy="true"] .spinner { display: block; }
 
-#progress { display: none; max-width: 640px; margin: 60px auto; }
-#progress h2 { font-family: var(--display); font-weight: 600; font-size: 30px; margin: 0 0 6px; }
-#progress .elapsed { font-family: var(--mono); font-size: 13px; color: var(--muted); }
-#progress ol { list-style: none; padding: 0; margin: 24px 0 0; font-family: var(--mono); font-size: 14px; }
-#progress li { padding: 8px 0; border-bottom: 1px dashed var(--rule); animation: fadein .4s both; }
-#progress li::before { content: "✓ "; color: var(--green); }
-#progress li.wait::before { content: "… "; color: var(--muted); }
-@keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/* progress */
+.progress { max-width: 560px; margin: var(--s7) auto 0; }
+.progress h1 { font-size: var(--fs-2xl); }
+.elapsed { margin-top: var(--s2); font-size: var(--fs-sm); color: var(--muted); }
+.bar { position: relative; height: 3px; margin: var(--s5) 0 var(--s4); overflow: hidden; border-radius: var(--pill); background: var(--line); }
+.bar::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 28%; border-radius: inherit; background: var(--ink-2); animation: indeterminate 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+.progress-foot { display: grid; justify-items: start; gap: var(--s2); margin-top: var(--s6); padding-top: var(--s5); border-top: 1px solid var(--line); }
 
-#report { display: none; }
-.verdict { display: grid; grid-template-columns: 260px minmax(0,1fr); gap: 36px; align-items: center; margin-bottom: 34px; }
-.stamp {
-  position: relative; width: 240px; height: 240px; border: 5px double var(--red); border-radius: 50%;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--red);
-  transform: rotate(-7deg); animation: stamp .45s cubic-bezier(.2,1.6,.4,1) both;
-}
-.stamp .num { font-family: var(--display); font-weight: 800; font-size: 92px; line-height: .9; letter-spacing: -0.04em; }
-.stamp .of { font-family: var(--mono); font-size: 14px; letter-spacing: .2em; }
-.stamp .bandtag { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: .14em; margin-top: 8px; text-align: center; padding: 0 20px; }
-@keyframes stamp { from { transform: rotate(-7deg) scale(1.6); opacity: 0; } to { transform: rotate(-7deg) scale(1); opacity: 1; } }
-.verdict h1 { font-family: var(--display); font-weight: 800; font-size: 44px; line-height: 1.05; margin: 0 0 10px; letter-spacing: -0.02em; }
-.verdict .desc { font-size: 20px; margin: 0 0 14px; }
-.verdict .math { font-family: var(--mono); font-size: 13px; color: var(--muted); line-height: 1.6; }
-.verdict .committee { font-style: italic; font-size: 19px; border-left: 3px solid var(--ink); padding-left: 14px; margin-top: 16px; }
-.caption { font-family: var(--mono); font-size: 12px; font-style: normal; color: var(--muted); }
+/* report header */
+.report-head { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--s4) var(--s6); padding: var(--s2) 0 var(--s5); }
+.score { font-family: var(--font-text); font-size: var(--fs-score); font-weight: 500; line-height: 0.95; letter-spacing: -0.03em; font-variant-numeric: tabular-nums lining-nums; }
+.score-of { margin-left: 2px; font-family: var(--font-ui); font-size: var(--fs-lg); font-weight: 500; letter-spacing: 0; color: var(--muted); }
+.verdict h1 { font-family: var(--font-text); font-size: var(--fs-2xl); font-weight: 600; }
+.verdict .desc { margin-top: var(--s1); max-width: 62ch; color: var(--ink-2); }
+.ruler { grid-column: 1 / -1; max-width: 760px; padding-top: var(--s2); }
+.ruler-track { position: relative; height: 6px; container-type: inline-size; }
+.ruler-track .band { position: absolute; top: 0; bottom: 0; background: var(--line); border-left: 2px solid var(--bg); }
+.ruler-track .band:first-child { border-left: 0; border-radius: var(--pill) 0 0 var(--pill); }
+.ruler-track .band:nth-last-child(2) { border-radius: 0 var(--pill) var(--pill) 0; }
+.ruler-track .band.on { background: var(--ink-2); }
+.ruler-marker { position: absolute; top: -5px; left: calc(var(--p) * 1%); width: 4px; height: 16px; margin-left: -2px; border-radius: 2px; background: var(--ink); box-shadow: 0 0 0 2px var(--bg); }
+.ruler-marker.once { animation: marker-in 700ms var(--ease) both; }
+.ruler-labels { position: relative; height: 18px; margin-top: 6px; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+.ruler-labels span { position: absolute; transform: translateX(-50%); }
+.ruler-labels span:first-child { transform: none; }
+.ruler-labels span:last-child { transform: translateX(-100%); }
+.committee { grid-column: 1 / -1; max-width: 68ch; }
+.committee blockquote { font-family: var(--font-text); font-style: italic; font-size: var(--fs-lg); line-height: 1.55; }
+.committee figcaption { margin-top: var(--s1); font-size: var(--fs-xs); color: var(--muted); }
+.math { grid-column: 1 / -1; margin-top: calc(-1 * var(--s2)); }
+.math p { max-width: 72ch; padding-bottom: var(--s2); font-size: var(--fs-sm); color: var(--ink-2); }
 
-.cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px; align-items: start; }
-.panel { background: var(--sheet); border: 1px solid var(--rule); box-shadow: var(--shadow); padding: 22px 24px; margin-bottom: 28px; }
-.panel h3 { font-family: var(--mono); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); margin: 0 0 14px; display: flex; justify-content: space-between; gap: 10px; }
-.cat { display: grid; grid-template-columns: 120px minmax(0,1fr) 44px; gap: 12px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--rule); cursor: pointer; }
-.cat:last-of-type { border-bottom: 0; }
-.cat .name { font-family: var(--display); font-weight: 600; font-size: 17px; }
-.cat .val { font-family: var(--mono); font-size: 15px; text-align: right; }
-.track { position: relative; height: 10px; background: repeating-linear-gradient(90deg, var(--rule) 0 1px, transparent 1px 10%); border: 1px solid var(--rule); }
-.track .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ink); }
-.track .tick { position: absolute; top: -5px; width: 2px; height: 18px; background: var(--red); }
-.track .tick.b { background: var(--blue); }
-.track .median { position: absolute; top: -3px; bottom: -3px; left: 50%; border-left: 1px dashed var(--muted); }
-.cat-detail { display: none; grid-column: 1 / -1; font-size: 15px; color: var(--muted); padding: 6px 0 4px; }
-.cat.open .cat-detail { display: block; }
-.cat-detail q { color: var(--ink); font-style: italic; }
-.legend { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 10px; }
-.legend i { display: inline-block; width: 10px; height: 10px; vertical-align: -1px; margin: 0 4px 0 8px; }
+/* tabs */
+.tabs { position: sticky; top: var(--header-h); z-index: var(--z-sticky); margin: 0 calc(-1 * var(--s5)); padding: 0 var(--s5); background: var(--bg); border-bottom: 1px solid var(--line); }
+.tablist { position: relative; display: flex; gap: var(--s1); overflow-x: auto; scrollbar-width: none; }
+.tablist::-webkit-scrollbar { display: none; }
+.tab { position: relative; display: inline-flex; align-items: center; gap: var(--s2); min-height: 48px; padding: 0 var(--s3); border: 0; background: none; color: var(--muted); font-size: var(--fs-sm); font-weight: 500; white-space: nowrap; transition: color var(--t1) var(--ease); }
+.tab:hover, .tab[aria-selected="true"] { color: var(--ink); }
+.tab:focus-visible { outline-offset: -4px; border-radius: var(--r1); }
+.tab .count { min-width: 22px; padding: 1px 7px; border-radius: var(--pill); background: var(--raised); color: var(--ink-2); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; text-align: center; }
+.tab .state { display: none; }
+.tab[data-state="busy"] .state { display: block; width: 12px; height: 12px; border: 2px solid var(--line-strong); border-top-color: var(--ink); border-radius: 50%; animation: spin 0.9s linear infinite; }
+.tab[data-state="done"] .state { display: block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.tab-ind { position: absolute; left: 0; bottom: 0; width: 1px; height: 2px; background: var(--accent); transform-origin: left; transition: transform var(--t3) var(--ease); pointer-events: none; }
+.tabpanel { padding-top: var(--s6); }
+.tabpanel.enter { animation: fade-up 180ms var(--ease); }
 
-.essay { font-size: 18.5px; line-height: 1.85; white-space: pre-wrap; }
-.essay .ed { background: var(--red-soft); border-bottom: 2px solid var(--red); cursor: pointer; transition: background .15s; }
-.essay .ed.cut { text-decoration: line-through; text-decoration-color: var(--red); text-decoration-thickness: 2px; }
-.essay .ed.minor { background: var(--amber-soft); border-bottom-color: var(--amber); }
-.essay .ed.active { background: var(--red); color: #fff; }
-.essay .lt { text-decoration: underline wavy var(--amber); text-underline-offset: 4px; }
-.editlist { max-height: 78vh; overflow: auto; padding-right: 4px; }
-.edit { padding: 12px 0 12px 14px; border-left: 3px solid var(--rule); margin-bottom: 10px; cursor: pointer; transition: border-color .15s, background .15s; }
-.edit.major { border-left-color: var(--red); }
-.edit.active { background: var(--red-soft); }
-.edit .orig { font-style: italic; }
-.edit .sugg { margin-top: 6px; }
-.edit .sugg b { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; color: var(--red); margin-right: 6px; }
-.edit .why { font-size: 15px; color: var(--muted); margin-top: 4px; }
-.pill { display: inline-block; font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; padding: 1px 6px; border: 1px solid currentColor; border-radius: 2px; margin-right: 6px; }
-.pill.major { color: var(--red); } .pill.minor { color: var(--amber); }
-
-.issue { padding: 12px 0; border-bottom: 1px solid var(--rule); }
+/* feedback */
+.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s4); counter-reset: fix; }
+.fixes li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px var(--s2); counter-increment: fix; }
+.fixes li::before { content: counter(fix); grid-row: span 2; font-family: var(--font-text); font-size: var(--fs-xl); line-height: 1.05; color: var(--muted); font-variant-numeric: lining-nums; }
+.fix-t { font-weight: 600; }
+.fix-w { font-size: var(--fs-sm); color: var(--ink-2); }
+.readers { display: grid; gap: var(--s4); }
+.reader-name { display: flex; align-items: center; gap: var(--s2); font-size: var(--fs-sm); font-weight: 600; }
+.reader-text { margin-top: var(--s1); }
+.cats { border-top: 1px solid var(--line); }
+.cat { border-bottom: 1px solid var(--line); }
+.cat-head { display: grid; grid-template-columns: 124px minmax(0, 1fr) 40px 16px; align-items: center; gap: var(--s4); width: 100%; padding: var(--s3) var(--s2); border: 0; border-radius: var(--r1); background: none; text-align: left; transition: background-color var(--t1) var(--ease); }
+.cat-head:hover { background: var(--raised); }
+.cat-name { font-weight: 500; }
+.cat-val { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.cat-head > .icon { color: var(--muted); transition: transform var(--t2) var(--ease); }
+.cat.open .cat-head > .icon { transform: rotate(180deg); }
+.track { position: relative; height: 8px; border-radius: var(--pill); background: var(--line); }
+.track .fill { position: absolute; top: 0; bottom: 0; left: 0; border-radius: inherit; background: var(--bar); transform-origin: left center; }
+.track .fill.once { animation: grow 700ms var(--ease) both; animation-delay: calc(var(--i) * 40ms + 120ms); }
+.track .median { position: absolute; top: -4px; bottom: -4px; left: 50%; border-left: 1px dashed var(--line-strong); }
+.tick { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; }
+.tick.a { background: var(--ink); box-shadow: 0 0 0 2px var(--bg); }
+.tick.b { background: var(--bg); border: 2px solid var(--ink); }
+.reader-name .tick { position: static; margin: 0; flex: none; }
+.cat-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--t3) var(--ease); }
+.cat.open .cat-body { grid-template-rows: 1fr; }
+.cat-inner { overflow: hidden; visibility: hidden; transition: visibility 0s linear var(--t3); }
+.cat.open .cat-inner { visibility: visible; transition-delay: 0s; }
+.cat-detail { display: grid; gap: var(--s2); max-width: 72ch; margin: 0; padding: var(--s1) var(--s2) var(--s4) calc(124px + var(--s4) + var(--s2)); font-size: var(--fs-sm); }
+.cat-detail dt { display: inline; font-weight: 600; }
+.cat-detail dt::after { content: ": "; }
+.cat-detail dd { display: inline; margin: 0; }
+.cat-detail blockquote.quote { margin-top: 0; font-size: var(--fs-sm); }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); margin-top: var(--s3); font-size: var(--fs-xs); color: var(--muted); }
+.legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .tick { position: static; margin: 0; }
+.lg-bar { width: 18px; height: 8px; border-radius: var(--pill); background: var(--bar); }
+.lg-median { width: 0; height: 12px; border-left: 1px dashed var(--line-strong); }
+.issues { list-style: none; margin: 0; padding: 0; }
+.issue { padding: var(--s4) 0; border-bottom: 1px solid var(--line); }
+.issue:first-child { padding-top: 0; }
 .issue:last-child { border-bottom: 0; }
-.issue .t { font-weight: 500; }
-.issue blockquote { margin: 6px 0; padding-left: 12px; border-left: 2px solid var(--red); font-style: italic; }
-.issue .w { font-size: 15px; color: var(--muted); }
-.good blockquote { border-left-color: var(--green); }
-.empty { color: var(--muted); font-style: italic; }
-.reader-name { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 500; }
+.issue-t { font-weight: 600; }
+.issue-t .chip { margin-right: var(--s2); }
+.issue-w { margin-top: var(--s2); font-size: var(--fs-sm); color: var(--ink-2); }
+.lint { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s3); }
+.lint li { display: flex; align-items: baseline; gap: var(--s3); }
+.lint-ex { color: var(--muted); }
+.dropped { margin-top: var(--s4); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--s3); margin-top: var(--s7); padding-top: var(--s5); border-top: 1px solid var(--line); }
+.ai-flag { margin-bottom: var(--s6); }
 
-.h2h { display: grid; grid-template-columns: 86px minmax(0,1fr); gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--rule); }
-.h2h:last-child { border-bottom: 0; }
-.res { font-family: var(--display); font-weight: 800; font-size: 20px; text-align: center; padding: 10px 0; border: 3px solid; transform: rotate(-4deg); height: fit-content; }
-.res.win { color: var(--green); } .res.loss { color: var(--red); } .res.split { color: var(--amber); }
-.h2h .title { font-family: var(--display); font-weight: 600; font-size: 19px; }
-.meta { font-family: var(--mono); font-size: 12px; color: var(--muted); }
-.h2h p { margin: 6px 0; font-size: 16px; }
-.h2h .sq { font-style: italic; color: var(--muted); }
-.h2h details { font-size: 15px; }
-.h2h details pre { white-space: pre-wrap; font-family: var(--serif); font-size: 15.5px; background: var(--paper); padding: 12px; max-height: 360px; overflow: auto; }
-.lint li { margin-bottom: 6px; font-size: 16px; }
-.lint .ex { color: var(--muted); }
-.sev { font-family: var(--mono); font-size: 11px; text-transform: uppercase; padding: 1px 5px; margin-right: 6px; }
-.sev.major { background: var(--red); color: #fff; } .sev.minor { background: var(--amber-soft); } .sev.info { background: var(--rule); }
-.ai-flag { border: 2px solid var(--red); padding: 12px 16px; margin: 0 0 28px; font-size: 16px; }
-.again { display: flex; gap: 12px; margin: 10px 0 30px; flex-wrap: wrap; }
-.err { background: var(--red-soft); border: 1px solid var(--red); padding: 14px 18px; margin: 0 0 20px; font-family: var(--mono); font-size: 14px; white-space: pre-wrap; }
-.better { border: 2px solid var(--ink); background: var(--sheet); padding: 22px 24px 8px; margin: 0 0 32px; box-shadow: 6px 6px 0 var(--red); }
-.better h2 { font-family: var(--display); font-weight: 800; font-size: 30px; letter-spacing: -0.01em; margin: 0 0 8px; }
-.better .lede { font-size: 17px; color: var(--muted); margin: 0 0 14px; max-width: 760px; }
-.better .panel { box-shadow: none; }
-#betterBody { margin-bottom: 16px; }
-.ministeps { list-style: none; padding: 0; margin: 0 0 10px; font-family: var(--mono); font-size: 13px; }
-.ministeps li { padding: 5px 0; animation: fadein .4s both; }
-.ministeps li::before { content: "✓ "; color: var(--green); }
-.ministeps li.wait::before { content: "… "; color: var(--muted); }
-.banner { padding: 12px 16px; margin: 0 0 20px; font-size: 16.5px; border-left: 5px solid; }
-.banner.ok { border-color: var(--green); background: var(--green-soft); }
-.banner.no { border-color: var(--amber); background: var(--amber-soft); }
-.banner ul { margin: 6px 0 0; padding-left: 20px; }
-.move { display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--rule); font-size: 16.5px; }
+/* essay text */
+.essay, .draft { font-family: var(--font-text); font-size: var(--fs-essay); line-height: 1.75; white-space: pre-wrap; overflow-wrap: break-word; }
+.doc-read { padding: var(--s6) var(--s7); }
+.essay .lt { text-decoration: underline wavy var(--amber) 1px; text-underline-offset: 5px; }
+.essay .ed { background: var(--mark); border-radius: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; text-decoration: underline solid var(--red) 1.5px; text-underline-offset: 4px; cursor: pointer; transition: background-color var(--t1) var(--ease), box-shadow var(--t1) var(--ease); }
+.essay .ed.minor { text-decoration-style: dashed; text-decoration-color: var(--amber); }
+.essay .ed.cut { text-decoration-line: line-through; text-decoration-style: solid; }
+.essay .ed:hover { background: var(--mark-active); }
+.essay .ed.active { background: var(--mark-active); box-shadow: 0 0 0 2px var(--mark-active); }
+.draft { padding: var(--s6) var(--s7); }
+.draft del { color: var(--red); background: var(--red-soft); text-decoration-thickness: 1.5px; border-radius: 2px; }
+.draft ins { text-decoration: none; background: var(--green-soft); box-shadow: inset 0 -2px 0 var(--green); border-radius: 2px; }
+mark.ask { padding: 0 2px; border-radius: 2px; background: var(--accent-soft); color: inherit; text-decoration: underline dashed var(--accent) 1.5px; text-underline-offset: 4px; }
+.doc-bar { position: sticky; top: calc(var(--header-h) + var(--tabs-h)); z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); min-height: 52px; padding: var(--s2) var(--s3); background: var(--surface); border-bottom: 1px solid var(--line); border-radius: 9px 9px 0 0; }
+.doc-title { padding-left: var(--s1); font-size: var(--fs-sm); font-weight: 600; }
+.doc-count { font-size: var(--fs-sm); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* line edits */
+.edits-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--s6); align-items: start; }
+.editlist { position: sticky; top: calc(var(--header-h) + var(--tabs-h) + var(--s4)); max-height: calc(100vh - var(--header-h) - var(--tabs-h) - var(--s6)); overflow: auto; overscroll-behavior: contain; padding: 4px; }
+.editlist .legend { margin: 0 0 var(--s3); }
+.lg-mark { display: inline-block; width: 18px; height: 12px; border-radius: 2px; background: var(--mark); text-decoration: none; }
+.lg-major { box-shadow: inset 0 -2px 0 var(--red); }
+.lg-minor { background-image: linear-gradient(90deg, var(--amber) 55%, transparent 55%); background-size: 6px 2px; background-repeat: repeat-x; background-position: bottom; }
+.lg-lint { width: 18px; height: 6px; border-bottom: 2px dotted var(--amber); }
+.edit-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.edit { display: grid; gap: var(--s2); width: 100%; padding: var(--s3) var(--s4); border: 1px solid var(--line); border-radius: var(--r2); background: var(--surface); color: var(--ink); text-align: left; font-size: var(--fs-sm); line-height: 1.5; transition: border-color var(--t1) var(--ease), background-color var(--t1) var(--ease); }
+.edit:hover { border-color: var(--line-strong); }
+.edit.active { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.edit-meta { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.edit-orig { font-family: var(--font-text); font-style: italic; font-size: var(--fs-md); }
+.edit-why { color: var(--ink-2); }
+
+/* rewrite */
+.intro, .chat-intro { max-width: 68ch; }
+.intro h2, .rev-head h2, .chat-intro h2 { font-size: var(--fs-xl); }
+.lede { margin-top: var(--s3); color: var(--ink-2); }
+.start { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3) var(--s4); margin-top: var(--s5); }
+.start .steps { flex-basis: 100%; }
+.intro .notice { margin-top: var(--s4); }
+.rev-head { margin-bottom: var(--s5); }
+.rev-status { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s2); color: var(--ink-2); }
+.rev-head .hint { margin-top: var(--s2); }
+.asks { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s4); }
+.asks p { margin-top: var(--s1); font-size: var(--fs-sm); color: var(--ink-2); }
+.why { margin-top: var(--s6); }
+.sub + .sub, .grid-2 + .sub, .sub + .grid-2 { margin-top: var(--s5); }
+.grid-2 > .sub + .sub { margin-top: 0; }
+.sub .hint { margin-top: var(--s3); }
+.sub h3 { margin-bottom: var(--s2); font-size: var(--fs-md); }
+.sub p + p { margin-top: var(--s2); }
+.sub ul { margin: var(--s2) 0 0; padding-left: 18px; }
+.sub .issues { padding-left: 0; }
+figure.best { margin-top: var(--s3); }
+figure.best figcaption { margin-top: var(--s1); padding-left: var(--s4); font-size: var(--fs-xs); color: var(--muted); }
+.moves { list-style: none; margin: 0; padding: 0; counter-reset: mv; }
+.move { position: relative; display: grid; gap: var(--s2); padding: var(--s4) 0 var(--s4) 40px; border-bottom: 1px solid var(--line); counter-increment: mv; font-size: var(--fs-sm); }
 .move:last-child { border-bottom: 0; }
-.move .n { font-family: var(--display); font-weight: 800; font-size: 28px; color: var(--red); line-height: 1; }
-.move .mt { font-family: var(--display); font-weight: 600; font-size: 19px; margin-bottom: 4px; }
-.move .tgt { font-style: italic; color: var(--muted); text-decoration: line-through; text-decoration-color: var(--red); margin: 4px 0 8px; }
-.move .new { border-left: 3px solid var(--green); padding-left: 12px; margin: 8px 0; }
-.move .eff { font-size: 15px; color: var(--muted); }
-.bm { margin: 8px 0 2px; padding-left: 12px; border-left: 3px solid var(--green); font-style: italic; }
-.draft { white-space: pre-wrap; font-size: 18.5px; line-height: 1.85; }
-.draft del { color: var(--red); background: var(--red-soft); text-decoration-thickness: 2px; }
-.draft ins { text-decoration: none; background: var(--green-soft); border-bottom: 2px solid var(--green); }
-mark.ask { background: var(--amber-soft); color: inherit; border-bottom: 2px dashed var(--amber); padding: 0 2px; }
-.why { margin: 8px 0 0; }
-.why > summary { cursor: pointer; font-size: 16px; padding: 10px 0; }
-.toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
-.toolbar .on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-.chatbox { border: 2px solid var(--ink); background: var(--sheet); padding: 22px 24px 8px; margin: 0 0 32px; box-shadow: 6px 6px 0 var(--blue); }
-.chatbox h2 { font-family: var(--display); font-weight: 800; font-size: 30px; letter-spacing: -0.01em; margin: 0 0 8px; }
-.chatbox .lede { font-size: 17px; color: var(--muted); margin: 0 0 14px; max-width: 760px; }
-.chatbox .panel { box-shadow: none; }
-.chatcols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 24px; align-items: start; }
-.chatpanel { display: flex; flex-direction: column; gap: 10px; position: sticky; top: 12px; }
-.thread { max-height: 58vh; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
-.msg { padding: 10px 14px; font-size: 16px; line-height: 1.5; max-width: 94%; }
-.msg.me { align-self: flex-end; background: var(--ink); color: var(--paper); white-space: pre-wrap; }
-.msg.bot { align-self: flex-start; background: var(--paper); border: 1px solid var(--rule); }
-.msg .changes { margin: 8px 0 0; padding-left: 18px; font-size: 15px; color: var(--muted); }
-.msg .w { font-size: 15px; color: var(--muted); margin-top: 4px; }
-.msg .banner { margin: 10px 0 0; font-size: 15px; }
-.msg .toolbar { margin: 10px 0 0; }
-.msg .err { margin: 0; }
-.rating { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--rule); }
-.rating .score { font-family: var(--display); font-weight: 800; font-size: 21px; margin: 0 4px; }
-.chips { display: flex; gap: 6px; flex-wrap: wrap; }
-.chip { text-align: left; }
-#chatInput { width: 100%; background: var(--sheet); border: 1px solid var(--rule); padding: 10px 12px; font-size: 16px; resize: vertical; min-height: 72px; border-radius: 2px; }
-#chatInput:focus { outline: none; border-color: var(--ink); }
-.send { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.send .go { margin-top: 0; }
-.btn-link:disabled { opacity: .45; cursor: default; }
-#history { display: none; position: absolute; right: 20px; top: 84px; width: min(520px, calc(100vw - 40px)); z-index: 5; max-height: 60vh; overflow: auto; }
-#history .row { display: grid; grid-template-columns: 52px minmax(0,1fr); gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--rule); cursor: pointer; font-size: 15px; }
-#history .row b { font-family: var(--display); font-size: 20px; }
+.move::before { content: counter(mv); position: absolute; left: 0; top: var(--s4); font-family: var(--font-text); font-size: var(--fs-xl); line-height: 1; color: var(--muted); font-variant-numeric: lining-nums; }
+.move-title { font-size: var(--fs-md); font-weight: 600; }
+.move-target { font-family: var(--font-text); font-style: italic; color: var(--ink-2); text-decoration: line-through; text-decoration-color: var(--red); }
+.move-new { padding: var(--s2) var(--s3); border-radius: var(--r1); background: var(--green-soft); font-family: var(--font-text); font-size: var(--fs-md); }
+.move-eff { color: var(--ink-2); }
+.kept { margin-top: var(--s5); }
+
+/* chat */
+.chat-intro { margin-bottom: var(--s5); }
+.chat-intro details { margin-top: var(--s3); }
+.chat-intro .disclosure-body p + p { margin-top: var(--s2); }
+.chat-intro .disclosure-body { font-size: var(--fs-sm); color: var(--ink-2); }
+.chat-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); gap: var(--s5); align-items: start; }
+.chatpanel { position: sticky; top: calc(var(--header-h) + var(--tabs-h) + var(--s4)); display: flex; flex-direction: column; gap: var(--s3); max-height: calc(100vh - var(--header-h) - var(--tabs-h) - var(--s6)); padding: var(--s3); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r2); }
+.thread { display: flex; flex: 1 1 auto; flex-direction: column; gap: var(--s3); min-height: 140px; overflow-y: auto; overscroll-behavior: contain; padding: 2px; }
+.thread-empty { margin: auto 0; padding: var(--s4); text-align: center; }
+.msg { max-width: 94%; font-size: var(--fs-sm); line-height: 1.55; overflow-wrap: anywhere; }
+.msg.me { align-self: flex-end; padding: var(--s2) var(--s3); border-radius: var(--r2) var(--r2) 4px var(--r2); background: var(--ink); color: var(--bg); white-space: pre-wrap; }
+.msg.bot { align-self: flex-start; display: grid; gap: var(--s2); padding: var(--s3); border-radius: 4px var(--r2) var(--r2) var(--r2); background: var(--raised); color: var(--ink); }
+.msg.enter { animation: rise var(--t3) var(--ease); }
+.msg .changes { margin: 0; padding-left: 18px; color: var(--ink-2); }
+.msg-note { color: var(--ink-2); }
+.msg .notice { padding: var(--s2) var(--s3); background-clip: padding-box; }
+.msg-actions { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.msg-actions .btn[aria-pressed="true"] { border-color: var(--ink); }
+.rating { display: grid; gap: 2px; padding-top: var(--s2); border-top: 1px solid var(--line); }
+.rating-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s2); }
+.rating-aspect { font-weight: 600; }
+.rating-score { font-family: var(--font-text); font-size: var(--fs-xl); white-space: nowrap; font-variant-numeric: tabular-nums lining-nums; }
+.rating-of { font-size: var(--fs-xs); color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.chips:empty { display: none; }
+.suggest { min-height: 32px; padding: 5px var(--s3); border: 1px solid var(--line-strong); border-radius: 16px; line-height: 1.35; background: var(--surface); color: var(--ink-2); font-size: var(--fs-sm); text-align: left; transition: background-color var(--t1) var(--ease), color var(--t1) var(--ease), border-color var(--t1) var(--ease); }
+.suggest:hover { background: var(--raised); color: var(--ink); border-color: color-mix(in oklch, var(--line-strong) 60%, var(--ink)); }
+.composer { display: grid; gap: var(--s2); }
+#chatInput { width: 100%; min-height: 76px; max-height: 40vh; padding: var(--s2) var(--s3); background: var(--bg); border: 1px solid var(--control); border-radius: var(--r1); font-size: var(--fs-sm); line-height: 1.5; resize: vertical; transition: border-color var(--t1) var(--ease), box-shadow var(--t1) var(--ease); }
+#chatInput:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+#chatInput[readonly] { opacity: 0.6; }
+.send { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); }
+
+/* comparisons */
+.ladder { position: relative; max-width: 80ch; margin: 0; padding: 0 0 0 28px; list-style: none; }
+.ladder::before { content: ""; position: absolute; left: 7px; top: 22px; bottom: 22px; width: 1px; background: var(--line-strong); }
+.rung, .match { display: grid; gap: var(--s2); max-width: 80ch; padding: var(--s4) 0; border-bottom: 1px solid var(--line); }
+.rung { position: relative; }
+.rung:last-child, .match:last-child { border-bottom: 0; }
+.rung::before { content: ""; position: absolute; left: -27px; top: 23px; width: 12px; height: 12px; border-radius: 50%; background: var(--bg); border: 2px solid var(--line-strong); }
+.rung.you::before { left: -28px; top: 22px; width: 14px; height: 14px; background: var(--ink); border-color: var(--ink); box-shadow: 0 0 0 4px var(--bg); }
+.rung-head, .match-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2) var(--s3); }
+.rung-level { min-width: 2.6em; font-family: var(--font-text); font-size: var(--fs-lg); font-variant-numeric: tabular-nums lining-nums; }
+.rung-title, .match-title { font-size: var(--fs-md); font-weight: 600; }
+.match-meta { font-size: var(--fs-sm); color: var(--muted); }
+.match-meta a { display: inline-flex; align-items: center; gap: 3px; }
+.match-meta .icon { width: 13px; height: 13px; }
+.opp { max-height: 420px; overflow: auto; padding: var(--s4) var(--s5); border-radius: var(--r1); background: var(--sunken); font-family: var(--font-text); font-size: var(--fs-md); line-height: 1.7; white-space: pre-wrap; }
+.similar a { font-weight: 600; }
+
+/* history drawer */
+dialog.drawer { position: fixed; inset: 0 0 0 auto; width: min(440px, 100vw); height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: var(--surface); color: var(--ink); }
+dialog.drawer::backdrop { background: var(--scrim); }
+dialog.drawer[open] { animation: drawer-in 260ms var(--ease); }
+dialog.drawer[open]::backdrop { animation: fade-in 260ms var(--ease); }
+dialog.drawer.closing { animation: drawer-out var(--t2) var(--ease) forwards; }
+dialog.drawer.closing::backdrop { animation: fade-out var(--t2) var(--ease) forwards; }
+.drawer-inner { display: flex; flex-direction: column; height: 100%; }
+.drawer-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); min-height: var(--header-h); padding: 0 var(--s3) 0 var(--s5); border-bottom: 1px solid var(--line); }
+.drawer-head h2 { font-size: var(--fs-lg); }
+.drawer-body { flex: 1; overflow: auto; padding: var(--s3) var(--s3) var(--s6); }
+#histMsg:not(:empty) { margin: 0 var(--s2) var(--s3); }
+.hist { list-style: none; margin: 0; padding: 0; }
+.hist li + li { border-top: 1px solid var(--line); }
+.hist .row { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; align-items: center; gap: var(--s3); width: 100%; padding: var(--s3) var(--s2); border: 0; border-radius: var(--r1); background: none; color: var(--ink); text-align: left; transition: background-color var(--t1) var(--ease); }
+.hist .row:hover { background: var(--raised); }
+.hist .row[aria-current="true"] { background: var(--accent-soft); }
+.hist .row[aria-busy="true"] { opacity: 0.6; cursor: progress; }
+.hist-score { font-family: var(--font-text); font-size: var(--fs-xl); text-align: center; font-variant-numeric: tabular-nums lining-nums; }
+.hist-line { display: block; overflow: hidden; font-family: var(--font-text); white-space: nowrap; text-overflow: ellipsis; }
+.hist-meta { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--muted); }
+.skel { height: 60px; margin: var(--s1) 0; border-radius: var(--r1); background: var(--raised); animation: pulse 1.1s ease-in-out infinite alternate; }
+
+/* toasts */
+.toasts { position: fixed; left: 50%; bottom: var(--s5); z-index: var(--z-toast); display: grid; gap: var(--s2); width: min(460px, calc(100vw - 32px)); transform: translateX(-50%); pointer-events: none; }
+.drawer .toasts { position: absolute; width: calc(100% - 32px); }  /* inside the panel the student is looking at */
+.toast { display: flex; align-items: center; gap: var(--s3); min-height: 48px; padding: var(--s2) var(--s2) var(--s2) var(--s4); border-radius: var(--r2); background: var(--ink); color: var(--bg); font-size: var(--fs-sm); box-shadow: var(--shadow-pop); pointer-events: auto; animation: toast-in var(--t3) var(--ease); }
+.toast > span { flex: 1; padding: var(--s1) 0; }
+.toast.out { animation: toast-out var(--t2) var(--ease) forwards; }
+.toast-btn { flex: none; min-height: 32px; padding: 0 var(--s3); border: 1px solid color-mix(in oklch, var(--bg) 35%, transparent); border-radius: var(--r1); background: transparent; color: inherit; font-size: var(--fs-sm); font-weight: 600; transition: background-color var(--t1) var(--ease); }
+.toast-btn:hover { background: color-mix(in oklch, var(--bg) 14%, transparent); }
+.toast-btn:focus-visible { outline-color: var(--bg); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes rise { from { opacity: 0.35; transform: translateY(6px); } }
+@keyframes fade-up { from { opacity: 0.35; transform: translateY(4px); } }
+@keyframes view-in { from { opacity: 0.35; transform: translateY(8px); } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes fade-out { to { opacity: 0; } }
+@keyframes grow { from { transform: scaleX(0); } }
+@keyframes marker-in { from { transform: translateX(calc(var(--p) * -1cqw)); } }
+@keyframes indeterminate { from { transform: translateX(-100%); } to { transform: translateX(360%); } }
+@keyframes drawer-in { from { transform: translateX(100%); } }
+@keyframes drawer-out { to { transform: translateX(100%); } }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
+@keyframes toast-out { to { opacity: 0; transform: translateY(4px); } }
+@keyframes pulse { to { opacity: 0.45; } }
+
 @media (max-width: 900px) {
-  .compose, .cols, .verdict, .chatcols { grid-template-columns: 1fr; }
-  .chatpanel { position: static; }
-  .stamp { margin: 0 auto; }
-  .compose textarea { padding: 24px 22px; min-height: 50vh; }
-  .editlist { max-height: none; }
+  :root { --s-page: var(--s4); }
+  .top-inner { padding: 0 var(--s4); }
+  .corpus { display: none; }
+  .page { padding: var(--s5) var(--s4) var(--s7); }
+  .compose, .edits-layout, .chat-layout, .grid-2, .grid-2.wide-left { grid-template-columns: minmax(0, 1fr); }
+  .settings { position: static; padding-top: 0; }
+  #essay { min-height: 50vh; padding: var(--s5) var(--s4); }
+  .doc-foot { padding: var(--s3) var(--s4); }
+  .report-head { gap: var(--s3) var(--s5); }
+  .score { font-size: 3.5rem; }
+  .verdict h1 { font-size: var(--fs-xl); }
+  .tabs { margin: 0 calc(-1 * var(--s4)); padding: 0; }
+  .tablist { padding: 0 var(--s4); }  /* scroll to the screen edge, so a cut-off tab reads as more to swipe */
+  .cat-head { grid-template-columns: 96px minmax(0, 1fr) 36px 16px; gap: var(--s3); }
+  .cat-detail { padding-left: var(--s2); }
+  .doc-read, .draft { padding: var(--s5) var(--s4); }
+  .editlist { position: sticky; top: auto; bottom: 0; max-height: 42vh; margin: 0 calc(-1 * var(--s4)); padding: var(--s3) var(--s4); background: var(--bg); border-top: 1px solid var(--line); box-shadow: 0 -2px 8px oklch(0.2 0.02 40 / 0.1); }
+  .chatpanel { position: static; order: -1; max-height: none; }
+  .thread { max-height: 50vh; }
+}
+@media (max-width: 560px) {
+  .top .btn .label { display: none; }
+  .top .btn:not(.btn-icon) { width: 44px; padding: 0; }
+  .doc-bar { position: static; }  /* header, tabs and a wrapped bar would cover a quarter of a phone screen */
+  .doc-bar .spacer { flex-basis: 100%; }  /* actions get one row of their own under the title */
+  #chatCopy .label, #chatUndo .label { display: none; }  /* the copy toast confirms; both keep an aria-label */
+  #chatCopy, #chatUndo { width: 44px; padding: 0; justify-content: center; }
+  .rung-level { min-width: 0; }
+  .ruler-labels span:last-child { display: none; }  /* 100 collides with 93 at phone width */
+}
+@media (max-width: 900px), (pointer: coarse) {
+  .btn, .seg > button, .suggest, .hist .row { min-height: 44px; }
+  .btn-icon { width: 44px; }
+  .seg-sm > button, .toast-btn, details.disclosure.sm > summary, .input { min-height: 44px; }
+}
+@media (pointer: coarse) {
+  .go kbd { display: none; }  /* no keyboard shortcut to advertise on a touch screen */
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; transition-delay: 0s !important; scroll-behavior: auto !important; }
+  .bar::after { animation: none !important; width: 100%; opacity: 0.35; }
+  .steps li.wait::before, .tab[data-state="busy"] .state, .spinner { animation: none !important; border-top-color: var(--line-strong); border-right-color: var(--ink); }
+  .skel { animation: none !important; }
 }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <div>
-      <div class="brand">Gary<span>Admit</span></div>
-      <div class="tagline">No glaze. Scored against real essays.</div>
-    </div>
-    <div class="top-right">
-      <span id="corpusInfo">corpus: …</span>
-      <button class="btn-link" id="histBtn">History</button>
-      <button class="btn-link" id="newBtn" style="display:none">New essay</button>
-    </div>
-  </header>
-  <div id="history" class="panel"></div>
-  <div id="errBox"></div>
+<svg class="sprite" aria-hidden="true" width="0" height="0" style="position:absolute">
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+  <symbol id="i-auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5v-2a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5M12 16.2v.1"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></symbol>
+</svg>
 
-  <section id="compose" class="compose">
-    <div class="sheet">
-      <textarea id="essay" placeholder="Paste your essay here." spellcheck="true"></textarea>
-      <div class="sheet-foot"><span id="wc">0 words</span><span id="wl"></span></div>
-    </div>
-    <aside class="side">
-      <label>Essay type</label>
-      <div class="seg" id="typeSeg">
-        <button data-v="personal" class="on">Personal statement</button>
-        <button data-v="supplement">Supplement</button>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">Gary<span>Admit</span></div>
+    <span class="spacer"></span>
+    <span class="corpus" id="corpusInfo"></span>
+    <button type="button" class="btn btn-ghost btn-icon" id="themeBtn" data-mode="auto" aria-label="Theme">
+      <svg class="icon i-auto" aria-hidden="true"><use href="#i-auto"></use></svg>
+      <svg class="icon i-light" aria-hidden="true"><use href="#i-sun"></use></svg>
+      <svg class="icon i-dark" aria-hidden="true"><use href="#i-moon"></use></svg>
+    </button>
+    <button type="button" class="btn btn-ghost" id="histBtn" aria-label="History" aria-haspopup="dialog" aria-expanded="false" aria-controls="history">
+      <svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg><span class="label">History</span>
+    </button>
+    <button type="button" class="btn btn-secondary" id="newBtn" aria-label="New essay" hidden>
+      <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg><span class="label">New essay</span>
+    </button>
+  </div>
+</header>
+
+<main class="page">
+  <section id="compose" class="view compose" aria-labelledby="composeTitle">
+    <div class="compose-main">
+      <button type="button" class="btn btn-ghost btn-sm back" id="backBtn" hidden><svg class="icon" aria-hidden="true"><use href="#i-left"></use></svg>Back to report</button>
+      <div class="compose-head">
+        <h1 id="composeTitle" tabindex="-1">Your essay</h1>
+        <p class="restored" id="composeNote" role="status"></p>
       </div>
-      <label for="prompt">Prompt (optional)</label>
-      <textarea id="prompt" placeholder="Paste the prompt you're answering"></textarea>
-      <label for="limit">Word limit</label>
-      <input type="number" id="limit" value="650" min="50" max="2000">
-      <label for="school">Target school (supplements)</label>
-      <input type="text" id="school" placeholder="e.g. Duke">
-      <div class="check"><input type="checkbox" id="fast"><label for="fast">Fast mode (Sonnet)</label></div>
-      <button class="go" id="go">Read it like an AO</button>
-      <div class="note">Scores are calibrated so the median applicant essay lands around 50 to 60. A 55 is not an insult; it means a reader won't remember it yet. Every score is checked in blind head-to-heads against real published essays on similar topics.</div>
+      <div id="errBox"></div>
+      <div class="doc compose-doc">
+        <label for="essay" class="sr-only">Essay text</label>
+        <textarea id="essay" placeholder="Paste your essay here." spellcheck="true" aria-describedby="wc wl essayMsg"></textarea>
+        <div class="doc-foot">
+          <span id="wc" class="tnum">0 words</span>
+          <span class="meter" id="meter" aria-hidden="true"><i id="meterFill"></i></span>
+          <span id="wl" class="tnum"></span>
+        </div>
+      </div>
+      <p class="field-msg" id="essayMsg" role="alert" hidden></p>
+    </div>
+    <aside class="settings" aria-label="Review settings">
+      <div class="field">
+        <span class="field-label" id="typeLabel">Essay type</span>
+        <div class="seg" id="typeSeg" role="group" aria-labelledby="typeLabel" data-v="personal"><button type="button" data-v="personal" class="on" aria-pressed="true">Personal statement</button><button type="button" data-v="supplement" aria-pressed="false">Supplement</button></div>
+      </div>
+      <div class="field">
+        <label for="limit">Word limit</label>
+        <input class="input tnum" type="number" id="limit" value="650" min="50" max="2000" inputmode="numeric" aria-describedby="limitNote">
+        <p class="hint" id="limitNote" aria-live="polite"></p>
+      </div>
+      <div class="field" id="schoolField" hidden>
+        <label for="school">School</label>
+        <input class="input" type="text" id="school" placeholder="e.g. Duke" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="prompt">Prompt <span class="opt">(optional)</span></label>
+        <textarea class="input" id="prompt" rows="3" placeholder="Paste the prompt you're answering"></textarea>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="fast" role="switch">
+        <span class="switch-track" aria-hidden="true"></span>
+        <span class="switch-text"><span class="switch-label">Fast mode</span><span class="hint">Uses Sonnet for every step.</span></span>
+      </label>
+      <div class="go-wrap">
+        <button type="button" class="btn btn-primary btn-lg go" id="go"><span class="label" id="goLabel">Review essay</span><kbd id="goKbd" aria-hidden="true"></kbd><span class="spinner" aria-hidden="true"></span></button>
+        <p class="hint" id="goRunning" hidden>A review is running. <button type="button" class="linkbtn" id="showProgress">Show progress</button></p>
+        <p class="hint" id="readyNote" hidden><span id="readyText"></span> <button type="button" class="linkbtn" id="openReady">Open it</button></p>
+        <p class="hint">The median applicant essay scores around 50 to 60. Each score is checked in blind comparisons against real published essays on similar topics.</p>
+      </div>
     </aside>
   </section>
 
-  <section id="progress">
-    <h2>Two readers are on it.</h2>
-    <div class="elapsed" id="elapsed">0s</div>
-    <ol id="steps"></ol>
+  <section id="progress" class="view progress" aria-labelledby="progressTitle" hidden>
+    <h1 id="progressTitle" tabindex="-1">Reviewing your essay</h1>
+    <p class="elapsed tnum" id="elapsed"></p>
+    <div class="bar" aria-hidden="true"></div>
+    <ol class="steps" id="steps" role="log" aria-live="polite" aria-label="Review progress"></ol>
+    <div class="progress-foot">
+      <button type="button" class="btn btn-secondary" id="bgBtn">Keep editing while it runs</button>
+      <p class="hint">The review keeps running if you leave this screen, and a notice appears when it's ready.</p>
+    </div>
   </section>
 
-  <section id="report"></section>
-</div>
+  <section id="report" class="view report" hidden></section>
+</main>
+
+<dialog id="history" class="drawer" aria-labelledby="historyTitle">
+  <div class="drawer-inner">
+    <div class="drawer-head">
+      <h2 id="historyTitle">Past reviews</h2>
+      <button type="button" class="btn btn-ghost btn-icon" id="histClose" aria-label="Close past reviews"><svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg></button>
+    </div>
+    <div class="drawer-body">
+      <div id="histMsg"></div>
+      <div id="histList"></div>
+    </div>
+    <div class="toasts" id="drawerToasts" role="status" aria-live="polite"></div>
+  </div>
+</dialog>
+
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
 <script>
 // ---- auto-escaping templates -------------------------------------------
@@ -300,50 +734,275 @@ const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ESC[c]);
 const part = v => v instanceof Safe ? v.s : Array.isArray(v) ? v.map(part).join("") : (v == null || v === false) ? "" : esc(v);
 const html = (strings, ...vals) => new Safe(strings.reduce((acc, s, i) => acc + s + (i < vals.length ? part(vals[i]) : ""), ""));
-const mount = (el, safe) => el.replaceChildren(document.createRange().createContextualFragment(safe.s));
+const fragment = safe => document.createRange().createContextualFragment(safe.s);
+const mount = (el, safe) => el.replaceChildren(fragment(safe));
 const safeUrl = u => /^https?:\/\//i.test(String(u || "")) ? u : "#";
 
 const $ = (s, el = document) => el.querySelector(s);
 const CATS = ["hook", "voice", "flow", "conciseness", "authenticity", "uniqueness", "insight"];
 const cap = s => s[0].toUpperCase() + s.slice(1);
-let essayType = "personal";
+const icon = name => html`<svg class="icon" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
+const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const smooth = () => (reduceMotion() ? "auto" : "smooth");
 
+let essayType = "personal";
+let current = null;  // the review on screen
+let view = "compose";  // which screen shows: compose, progress or report
+let tab = "feedback";  // which report tab shows
+let timer, reviewRunning = false;
+let ready = null;  // a review that finished while the student was elsewhere and has not been opened
+let versions = [];  // working drafts, oldest first; the last is on screen and is what the next message edits
+const chatting = new Map();  // key() of a review -> its running chat request, whose paint() redraws it on whichever copy is on screen
+const unsent = new Map();  // key() of a review -> a message from its box that failed while another review was on screen
+const revising = new Map();  // key() of a review -> progress of its running rewrite
+
+// True when focus sits on nothing, usually because the focused control was just replaced.
+const lostFocus = () => !document.activeElement || document.activeElement === document.body;
+
+function errText(e) {
+  const m = (e && e.message) || String(e || "Something went wrong.");
+  return /Failed to fetch|NetworkError|Load failed/i.test(m)
+    ? "Can't reach the GaryAdmit server. Check that garyadmit serve is still running, then try again." : m;
+}
+
+// ---- toasts ------------------------------------------------------------------
+function toast(message, action) {
+  // The modal drawer makes the rest of the page inert, so while it is open toasts go inside it.
+  const box = $("#history").open ? $("#drawerToasts") : $("#toasts"), el = document.createElement("div"), text = document.createElement("span");
+  el.className = "toast";
+  text.textContent = message;
+  el.append(text);
+  let gone = false, t;
+  const dismiss = () => {
+    if (gone) return;
+    gone = true;
+    clearTimeout(t);
+    if (reduceMotion()) { el.remove(); return; }
+    el.classList.add("out");
+    el.addEventListener("animationend", () => el.remove(), { once: true });
+    setTimeout(() => el.remove(), 400);
+  };
+  if (action) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "toast-btn"; b.textContent = action.label;
+    b.onclick = async () => {
+      dismiss();
+      // Every action changes what the page shows, which is inert behind the modal drawer, so the drawer goes first.
+      if ($("#history").open) await closeDrawer();
+      action.run();
+    };
+    el.append(b);
+  }
+  const wait = action ? 9000 : 4500;
+  const arm = ms => { clearTimeout(t); t = setTimeout(dismiss, ms); };
+  el.addEventListener("mouseenter", () => clearTimeout(t));
+  el.addEventListener("mouseleave", () => arm(2500));
+  el.addEventListener("focusin", () => clearTimeout(t));
+  el.addEventListener("focusout", () => arm(2500));
+  box.append(el);
+  while (box.children.length > 3) box.firstElementChild.remove();
+  arm(wait);
+}
+
+// ---- compose -----------------------------------------------------------------
 function words(t) { return (t.match(/[A-Za-z0-9'’-]+/g) || []).length; }
 function updateCount() {
   const n = words($("#essay").value), lim = parseInt($("#limit").value || "0", 10);
-  $("#wc").textContent = `${n} words`;
+  $("#wc").textContent = `${n} ${n === 1 ? "word" : "words"}`;
   mount($("#wl"), lim ? (n > lim ? html`<span class="over">${n - lim} over ${lim}</span>` : html`${lim - n} left of ${lim}`) : html``);
+  const m = $("#meter");
+  m.hidden = !lim;
+  m.classList.toggle("over", !!lim && n > lim);
+  m.classList.toggle("near", !!lim && n <= lim && n >= lim * 0.9);
+  $("#meterFill").style.transform = `scaleX(${lim ? Math.min(n / lim, 1) : 0})`;
+  if (n >= 50) clearEssayMsg();
 }
-$("#essay").addEventListener("input", updateCount);
-$("#limit").addEventListener("input", updateCount);
-try { const d = localStorage.getItem("ga-draft"); if (d) $("#essay").value = d; } catch (e) {}
-$("#essay").addEventListener("input", () => { try { localStorage.setItem("ga-draft", $("#essay").value); } catch (e) {} });
-updateCount();
+const autoSized = window.CSS && CSS.supports("field-sizing", "content");
+function grow() {
+  if (autoSized || $("#compose").hidden) return;  // a hidden textarea reports scrollHeight 0
+  const t = $("#essay"), y = window.scrollY;
+  t.style.height = "auto";
+  t.style.height = t.scrollHeight + "px";
+  if (window.scrollY !== y) window.scrollTo(0, y);
+}
+const saveDraft = t => { try { localStorage.setItem("ga-draft", t); } catch (e) {} };
+function showEssayMsg(n) {
+  mount($("#essayMsg"), html`${icon("alert")}<span>Paste the full essay. It needs at least 50 words${n ? `, and this has ${n}` : ""}.</span>`);
+  $("#essayMsg").hidden = false;
+  $("#essay").setAttribute("aria-invalid", "true");
+  $("#essay").focus();
+}
+// Emptied as well as hidden: aria-describedby still reads a hidden element's text.
+function clearEssayMsg() { $("#essayMsg").hidden = true; $("#essayMsg").replaceChildren(); $("#essay").removeAttribute("aria-invalid"); }
 
-$("#typeSeg").addEventListener("click", e => {
-  const b = e.target.closest("button"); if (!b) return;
-  essayType = b.dataset.v;
-  [...$("#typeSeg").children].forEach(x => x.classList.toggle("on", x === b));
-  if (essayType === "personal") $("#limit").value = 650;
-  else if ($("#limit").value === "650") $("#limit").value = 250;
-  updateCount();
+// One line above the editor for restored or replaced drafts. Undo stays until the next review or replacement,
+// because it holds the only copy of the previous draft, and it swaps instead of discarding, so a stray click
+// loses nothing. The restored-draft notice goes once the student types.
+let noteRun = null, noteKeep = false;
+function setNote(text, label, run, keep) {
+  noteRun = text ? run : null;
+  noteKeep = !!keep;
+  mount($("#composeNote"), text ? html`${text} <button type="button" class="linkbtn" id="noteBtn">${label}</button>` : html``);
+}
+function offerUndo(text, prev) {
+  setNote(text, "Undo", () => {
+    const next = composeState();
+    restoreCompose(prev);
+    setNote("Put back your previous draft.", "Redo", () => { const back = composeState(); restoreCompose(next); offerUndo(text, back); }, true);
+  }, true);
+}
+$("#composeNote").addEventListener("click", e => {
+  if (!e.target.closest("#noteBtn")) return;
+  const run = noteRun;
+  setNote(null);
+  if (run) run();
 });
 
+function setType(v) {
+  essayType = v;
+  $("#typeSeg").dataset.v = v;
+  [...$("#typeSeg").children].forEach(x => { x.classList.toggle("on", x.dataset.v === v); x.setAttribute("aria-pressed", String(x.dataset.v === v)); });
+  $("#schoolField").hidden = v !== "supplement";
+}
+$("#typeSeg").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b || b.classList.contains("on")) return;
+  const before = $("#limit").value;
+  setType(b.dataset.v);
+  if (essayType === "personal") $("#limit").value = 650;
+  else if ($("#limit").value === "650") $("#limit").value = 250;
+  $("#limitNote").textContent = $("#limit").value !== before ? `Word limit set to ${$("#limit").value}.` : "";
+  updateCount();
+});
+$("#essay").addEventListener("input", () => { saveDraft($("#essay").value); updateCount(); grow(); if (noteRun && !noteKeep) setNote(null); });
+$("#limit").addEventListener("input", () => { $("#limitNote").textContent = ""; updateCount(); });
+
+function applyMeta(m) {
+  setType(m.essay_type === "supplement" ? "supplement" : "personal");
+  $("#limit").value = m.word_limit ?? "";
+  $("#prompt").value = m.prompt || "";
+  $("#school").value = m.school || "";
+  $("#limitNote").textContent = "";
+}
+function composeState() {
+  return { essay: $("#essay").value, type: essayType, limit: $("#limit").value, prompt: $("#prompt").value, school: $("#school").value };
+}
+function restoreCompose(p) {
+  $("#essay").value = p.essay;
+  saveDraft(p.essay);
+  applyMeta({ essay_type: p.type, word_limit: p.limit, prompt: p.prompt, school: p.school });
+  updateCount(); grow();
+  $("#essay").focus();
+}
+// Each "Edit and re-score" loads the version its tab shows, with the review's settings, so the new score is comparable.
+function loadIntoCompose(text, what, meta) {
+  const prev = composeState();
+  $("#essay").value = text;
+  saveDraft(text);
+  if (meta) applyMeta(meta);
+  clearEssayMsg();
+  updateCount();
+  show("compose", "#essay");
+  if (prev.essay.trim() && prev.essay !== text) offerUndo(`Loaded ${what} into the editor.`, prev);
+  else if (!noteKeep) setNote(null);  // nothing was replaced, so an Undo holding an earlier draft stays
+}
+
+function clearDraft() {
+  const prev = composeState();
+  $("#essay").value = "";
+  try { localStorage.removeItem("ga-draft"); } catch (e) {}
+  updateCount(); grow();
+  $("#essay").focus();
+  offerUndo("Cleared the draft.", prev);
+}
+
+// ---- theme -------------------------------------------------------------------
+const THEMES = ["auto", "light", "dark"];
+let theme = "auto";
+try { theme = localStorage.getItem("ga-theme") || "auto"; } catch (e) {}
+if (!THEMES.includes(theme)) theme = "auto";
+function applyTheme(mode) {
+  if (mode === "auto") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = mode;
+  const b = $("#themeBtn"), next = THEMES[(THEMES.indexOf(mode) + 1) % THEMES.length];
+  b.dataset.mode = mode;
+  b.setAttribute("aria-label", `Theme: ${mode === "auto" ? "follows your system" : mode}. Switch to ${next === "auto" ? "system" : next}.`);
+  b.title = b.getAttribute("aria-label");
+}
+$("#themeBtn").onclick = () => {
+  theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+  try { localStorage.setItem("ga-theme", theme); } catch (e) {}
+  if (document.startViewTransition && !reduceMotion()) document.startViewTransition(() => applyTheme(theme));
+  else applyTheme(theme);
+};
+
 fetch("/api/status").then(r => r.json()).then(s => {
-  $("#corpusInfo").textContent = s.corpus_size ? `${s.corpus_size} real essays indexed` : "no corpus: rubric-only";
+  $("#corpusInfo").textContent = s.corpus_size ? `${Number(s.corpus_size).toLocaleString()} real essays indexed` : "Rubric only: no essay corpus";
 }).catch(() => {});
 
-function show(id) {
-  for (const s of ["compose", "progress", "report"]) $("#" + s).style.display = s === id ? (s === "compose" ? "grid" : "block") : "none";
-  $("#newBtn").style.display = id === "compose" ? "none" : "inline-block";
+// ---- views and jobs ------------------------------------------------------------
+function show(id, focusSel) {
+  view = id;
+  for (const s of ["compose", "progress", "report"]) $("#" + s).hidden = s !== id;
+  $("#newBtn").hidden = id === "compose";
+  $("#backBtn").hidden = !(id === "compose" && current);
+  document.title = id === "report" && current ? `${Math.round(current.score)} · ${current.band} · GaryAdmit`
+    : id === "progress" ? "Reviewing · GaryAdmit" : "GaryAdmit";
+  const el = $("#" + id);
+  el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter");
+  window.scrollTo({ top: 0 });
+  if (id === "compose") grow();
+  const f = focusSel ? $(focusSel) : el.querySelector("h1");
+  if (f) f.focus({ preventScroll: true });
+  if (id === "report") moveInd(true);
 }
-function showError(msg) { show("compose"); mount($("#errBox"), html`<div class="err">${msg}</div>`); }
+function setError(msg) {
+  mount($("#errBox"), msg ? html`<div class="notice notice-error" role="alert" tabindex="-1">${icon("alert")}<div><b>The review didn't finish.</b> ${msg}
+    <div class="notice-actions"><button type="button" class="btn btn-secondary btn-sm" id="retryBtn">Try again</button></div></div></div>` : html``);
+}
+function setReady(r) {
+  ready = r;
+  $("#readyNote").hidden = !r;
+  if (r) $("#readyText").textContent = `Your review is ready: ${Math.round(r.score)}, ${r.band}.`;
+}
 $("#newBtn").onclick = () => show("compose");
+$("#backBtn").onclick = () => show("report");
+$("#bgBtn").onclick = () => show("compose");
+$("#showProgress").onclick = () => show("progress");
+$("#openReady").onclick = () => { if (ready) render(ready); };
+
+// Appends only the steps not already listed, so a poll never re-renders or re-animates the list.
+function syncSteps(list, steps, wait) {
+  if (!list) return;
+  let done = [...list.children].filter(li => !li.classList.contains("wait"));
+  if (done.length > steps.length || done.some((li, i) => li.dataset.text !== steps[i])) { list.replaceChildren(); done = []; }
+  let waiting = list.querySelector(":scope > li.wait");
+  for (let i = done.length; i < steps.length; i++) {
+    const li = document.createElement("li");
+    li.dataset.text = steps[i];
+    li.textContent = steps[i];
+    li.className = "enter";
+    list.insertBefore(li, waiting);
+  }
+  if (wait) {
+    if (!waiting) { waiting = document.createElement("li"); waiting.className = "wait"; list.append(waiting); }
+    if (waiting.textContent !== wait) waiting.textContent = wait;
+  } else if (waiting) waiting.remove();
+}
 
 async function pollJob(job, onProgress) {
+  let misses = 0;
   while (true) {
     await new Promise(r => setTimeout(r, 1500));
-    const j = await (await fetch("/api/job/" + job)).json();
+    let resp, j;
+    try { resp = await fetch("/api/job/" + job); j = await resp.json(); misses = 0; }
+    catch (err) {
+      // A dropped poll is not a failed job: the server keeps running it, so retry with backoff.
+      if (++misses >= 5) throw new Error(`Lost contact with the server (${errText(err)})`);
+      await new Promise(r => setTimeout(r, 1000 * misses));
+      continue;
+    }
+    if (resp.status === 404) throw new Error("The server no longer knows this job, probably because it restarted. Start it again.");
+    if (!resp.ok) throw new Error(j.error || `server returned ${resp.status}`);
     onProgress(j);
     if (j.status === "done") return j.result;
     if (j.status === "error") throw new Error(j.error);
@@ -352,29 +1011,58 @@ async function pollJob(job, onProgress) {
 
 async function startJob(url, body) {
   const resp = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  const { job, error } = await resp.json();
-  if (!job) throw new Error(error || `server returned ${resp.status}`);
-  return job;
+  let data = {};
+  try { data = await resp.json(); } catch (err) {}
+  if (!data.job) throw new Error(data.error || `server returned ${resp.status}`);
+  return data.job;
 }
 
-let timer;
+function setReviewRunning(on) {
+  reviewRunning = on;
+  $("#go").disabled = on;
+  $("#go").setAttribute("aria-busy", String(on));
+  $("#goLabel").textContent = on ? "Review running" : "Review essay";
+  $("#goRunning").hidden = !on;
+}
+
 $("#go").onclick = async () => {
-  const essay = $("#essay").value.trim();
-  if (words(essay) < 50) { alert("Paste the full essay (at least 50 words)."); return; }
-  $("#go").disabled = true;
-  mount($("#errBox"), html``);
-  const body = { essay, prompt: $("#prompt").value, essay_type: essayType, word_limit: $("#limit").value, school: $("#school").value, fast: $("#fast").checked };
+  if (reviewRunning) return;
+  const essay = $("#essay").value.trim(), n = words(essay);
+  if (n < 50) { showEssayMsg(n); return; }
+  clearEssayMsg();
+  setError("");
+  setReady(null);
+  setNote(null);
+  const body = { essay, prompt: $("#prompt").value, essay_type: essayType, word_limit: $("#limit").value,
+    school: essayType === "supplement" ? $("#school").value : "", fast: $("#fast").checked };
+  setReviewRunning(true);
   show("progress");
-  mount($("#steps"), html`<li class="wait">Starting two independent readers, a line editor, and the similar-essay search</li>`);
+  const steps = $("#steps");
+  steps.replaceChildren();
+  syncSteps(steps, [], "Starting two independent readers, a line editor, and the similar-essay search");
   const t0 = Date.now();
+  const tick = () => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    $("#elapsed").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")} elapsed · usually 1 to 3 minutes`;
+  };
   clearInterval(timer);
-  timer = setInterval(() => { $("#elapsed").textContent = `${Math.round((Date.now() - t0) / 1000)}s elapsed · usually 1 to 3 minutes`; }, 500);
+  tick();
+  timer = setInterval(tick, 1000);
   try {
     const job = await startJob("/api/review", body);
-    render(await pollJob(job, j => mount($("#steps"), html`${j.progress.map(p => html`<li>${p}</li>`)}${j.status === "running" ? html`<li class="wait">Still reading</li>` : ""}`)));
+    const r = await pollJob(job, j => syncSteps(steps, j.progress || [], j.status === "running" ? "Still reading" : null));
+    if (view === "progress") render(r);
+    else {
+      // The student moved on; offer the result instead of replacing what they are reading.
+      setReady(r);
+      document.title = "Review ready · GaryAdmit";
+      toast(`Your review is ready: ${Math.round(r.score)}, ${r.band}.`, { label: "Open it", run: () => render(r) });
+    }
   } catch (e) {
-    showError(String(e));
-  } finally { clearInterval(timer); $("#go").disabled = false; }
+    setError(errText(e));
+    if (view === "progress") show("compose", "#errBox .notice");
+    else toast("The review didn't finish.", { label: "See why", run: () => show("compose", "#errBox .notice") });
+  } finally { clearInterval(timer); setReviewRunning(false); }
 };
 
 const LINT_MARKS = ["cliche", "ai_tell", "thesaurus", "told_emotion", "intensifiers"];
@@ -405,22 +1093,120 @@ function activate(i, scroll) {
   document.querySelectorAll(".ed.active, .edit.active").forEach(x => x.classList.remove("active"));
   document.querySelectorAll(`.ed[data-i="${CSS.escape(i)}"]`).forEach(x => x.classList.add("active"));
   const card = $(`.edit[data-i="${CSS.escape(i)}"]`);
-  if (card) { card.classList.add("active"); if (scroll === "card") card.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
-  if (scroll === "essay") { const m = $(`.ed[data-i="${CSS.escape(i)}"]`); if (m) m.scrollIntoView({ block: "center", behavior: "smooth" }); }
+  if (card) { card.classList.add("active"); if (scroll === "card") card.scrollIntoView({ block: "nearest", behavior: smooth() }); }
+  if (scroll === "essay") { const m = $(`.ed[data-i="${CSS.escape(i)}"]`); if (m) m.scrollIntoView({ block: "center", behavior: smooth() }); }
+}
+
+// ---- report tabs ---------------------------------------------------------------
+const TABS = [["feedback", "Feedback"], ["edits", "Line edits"], ["rewrite", "Rewrite"], ["chat", "Ask for changes"], ["compare", "Comparisons"]];
+function moveInd(instant) {
+  const ind = $("#report .tab-ind"), b = $('#report .tab[aria-selected="true"]');
+  if (!ind || !b || !b.offsetWidth) return;
+  if (instant) ind.style.transition = "none";
+  ind.style.transform = `translateX(${b.offsetLeft}px) scaleX(${b.offsetWidth})`;
+  if (instant) { void ind.offsetWidth; ind.style.transition = ""; }
+}
+function selectTab(name, opts = {}) {
+  const btn = $("#tabbtn-" + name);
+  if (!btn) return;
+  tab = name;
+  document.querySelectorAll("#report .tab").forEach(b => {
+    const on = b === btn;
+    b.setAttribute("aria-selected", String(on));
+    b.tabIndex = on ? 0 : -1;
+  });
+  if (btn.dataset.state === "done") setTabState(name, "");
+  document.querySelectorAll("#report .tabpanel").forEach(p => {
+    const on = p.id === "tab-" + name;
+    if (on && p.hidden) {
+      p.hidden = false;
+      if (!opts.instant) { p.classList.remove("enter"); void p.offsetWidth; p.classList.add("enter"); }
+    } else if (!on) p.hidden = true;
+  });
+  moveInd(opts.instant);
+  // A strip too wide for the screen centers the chosen tab, so the tabs beside it peek in and show there is more.
+  // Only the strip scrolls: scrollIntoView on a button inside the sticky bar also moves the page.
+  const strip = btn.parentElement;
+  if (strip.scrollWidth > strip.clientWidth) {
+    strip.scrollTo({ left: btn.offsetLeft + btn.offsetWidth / 2 - strip.clientWidth / 2, behavior: opts.instant ? "auto" : smooth() });
+  }
+  if (opts.focus) btn.focus({ preventScroll: true });
+  if (name === "chat") toBottom($("#thread"));
+  if (!opts.instant) {
+    const head = $(".top").offsetHeight + $("#report .tabs").offsetHeight;
+    const docTop = el => el.getBoundingClientRect().top + window.scrollY;
+    // A long panel may have left the page scrolled far down; start the new one at its top.
+    let y = Math.min(window.scrollY, docTop($("#tab-" + name)) - head - 8);
+    // The chat is no use with its composer off screen, so bring the working area up under the tab bar.
+    const composer = name === "chat" && $("#chat .composer");
+    if (composer && composer.getBoundingClientRect().bottom + window.scrollY - y > innerHeight) y = docTop($("#chat .chat-layout")) - head - 16;
+    if (Math.abs(y - window.scrollY) > 1) window.scrollTo({ top: y });
+  }
+}
+// Scrolls a scrolling box so el's top sits just inside it.
+function reveal(box, el) {
+  box.scrollTo({ top: el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 8, behavior: smooth() });
+}
+function toBottom(el, animate) {
+  if (!el) return;
+  if (animate) { el.scrollTo({ top: el.scrollHeight, behavior: smooth() }); return; }
+  el.scrollTop = el.scrollHeight;
+}
+function setTabState(name, state) {
+  const b = $("#tabbtn-" + name);
+  if (!b) return;
+  if (state) b.dataset.state = state; else delete b.dataset.state;
+  b.querySelector(".sr-state").textContent = state === "busy" ? " (working)" : state === "done" ? " (new result)" : "";
+}
+function setTabCount(name, n) {
+  const c = $(`#tabbtn-${name} .count`);
+  if (c) { c.textContent = String(n); c.hidden = !n; }
+}
+// A job that finishes on a tab the student is not looking at marks that tab and says so.
+function finishTab(name, message) {
+  if (view === "report" && tab === name) { setTabState(name, ""); return; }
+  setTabState(name, "done");
+  const k = key(current);
+  toast(message, { label: "Show me", run: () => {
+    if (!current || key(current) !== k) { toast("That result belongs to another review. Open it from History."); return; }
+    if (view !== "report") show("report");
+    selectTab(name, { focus: true });
+  } });
+}
+// A turn button or Undo that just disabled itself would drop focus to the page.
+function keepChatFocus(btn) {
+  if (!btn.disabled) return;
+  const undo = $("#chatUndo");
+  (undo.disabled ? $("#chatInput") : undo).focus({ preventScroll: true });
+}
+
+function countUp(el, to) {
+  el.textContent = String(to);
+  if (reduceMotion() || document.visibilityState !== "visible") return;
+  const t0 = performance.now(), dur = 700;
+  const step = now => {
+    const k = Math.min((now - t0) / dur, 1);
+    el.textContent = String(Math.round(to * (1 - Math.pow(1 - k, 4))));
+    if (k < 1 && el.isConnected) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+  setTimeout(() => { el.textContent = String(to); }, dur + 150);  // lands on the true score even if frames stop
 }
 
 // ---- revision ------------------------------------------------------------
-let current = null;  // the review on screen
 const ASK = /(\[[^\[\]\n]{3,300}\])/;
 const withAsks = t => String(t || "").split(ASK).map((p, i) => i % 2 ? html`<mark class="ask">${p}</mark>` : p);
 const diffHtml = d => d.segments.map(s => s.op === "equal" ? withAsks(s.text)
   : s.op === "insert" ? html`<ins>${withAsks(s.text)}</ins>` : html`<del>${s.text}</del>`);
 
 function betterIntro(err) {
-  return html`<h2>Make it a lot better</h2>
-    <p class="lede">GaryAdmit finds what your essay is really about, rebuilds it around your best material in your own voice, and asks you for the details only you know. It only calls the result better if a blind judge prefers it in both orders over your original and over a polish-only rewrite of it, and a separate check finds no invented facts or AI-sounding phrases. Claude runs those checks too, so read every line against what happened before you use it.</p>
-    ${err ? html`<div class="err">${err}</div>` : ""}
-    <div id="betterBody"><button class="go inline" id="betterBtn">Make it a lot better</button> <span class="caption">2 to 5 minutes · 7 to 13 more model calls</span></div>`;
+  return html`<div class="intro">
+    <h2>A checked rewrite</h2>
+    <p class="lede">GaryAdmit finds what your essay is really about, rebuilds it around your best material in your own voice, and asks you for the details only you know.</p>
+    <p class="lede">It calls the result better only if a blind judge prefers it in both orders over your original and over a polish-only rewrite of it, and a separate check finds no invented facts or AI-sounding phrases. Claude runs those checks too, so read every line against what happened before you use it.</p>
+    ${err ? html`<div class="notice notice-error" role="alert">${icon("alert")}<div><b>The rewrite didn't finish.</b> ${err}</div></div>` : ""}
+    <div id="betterBody" class="start"><button type="button" class="btn btn-primary btn-lg" id="betterBtn">Make it a lot better</button><span class="hint">2 to 5 minutes · 7 to 13 more model calls</span></div>
+  </div>`;
 }
 
 function revisionHtml(v) {
@@ -428,69 +1214,103 @@ function revisionHtml(v) {
   const share = jd.category_share || {};
   const won = CATS.filter(c => share[c] > 0.5), lost = CATS.filter(c => share[c] < 0.5);
   const nq = v.questions.length;
-  const banner = v.verified
-    ? html`<div class="banner ok"><b>Verified.</b> A blind judge preferred this revision over your original in both orders${won.length ? `, winning on ${won.join(", ")}` : ""}${lost.length ? ` and losing on ${lost.join(", ")}` : ""}. ${jd.decisive_difference || ""}
-        ${v.checks.vs_polish ? html`<br>It also beat a polish-only rewrite of your original in both orders, so the gain is more than smoother sentences.` : ""}
-        ${jd.voice_share > 0.5 ? html`<br>It also judged that the revision sounds more like one specific real teenager.` : ""}
-        ${nq ? html`<br><span class="caption">This assumes you answer the ${nq} bracketed question${nq > 1 ? "s" : ""} with true details.</span>` : ""}</div>`
-    : html`<div class="banner no"><b>Not verified.</b> Treat this as a starting point, not a finished essay.<ul>${v.checks.failures.map(f => html`<li>${f}</li>`)}</ul></div>`;
+  const checked = v.verified
+    ? html`<p>A blind judge preferred this revision over your original in both orders${won.length ? `, winning on ${won.join(", ")}` : ""}${lost.length ? ` and losing on ${lost.join(", ")}` : ""}. ${jd.decisive_difference || ""}</p>
+        ${v.checks.vs_polish ? html`<p>It also beat a polish-only rewrite of your original in both orders, so the gain is more than smoother sentences.</p>` : ""}
+        ${jd.voice_share > 0.5 ? html`<p>The judge also found that the revision sounds more like one specific real teenager.</p>` : ""}
+        ${nq ? html`<p class="hint">This assumes you answer the ${nq} bracketed question${nq > 1 ? "s" : ""} with true details.</p>` : ""}`
+    : html`<p>These checks failed:</p><ul>${v.checks.failures.map(f => html`<li>${f}</li>`)}</ul>`;
   const d = v.diagnosis, vc = v.voice;
-  const moves = v.moves.map((m, i) => html`<div class="move"><div class="n">${i + 1}</div><div>
-      <div class="mt">${m.title} <span class="pill">${m.kind}</span></div>
-      ${m.target ? html`<div class="tgt">“${m.target}”</div>` : ""}
-      <div><b>Problem:</b> ${m.problem}</div>
-      <div><b>Do this:</b> ${m.change}</div>
-      ${m.rewrite ? html`<div class="new">${withAsks(m.rewrite)}</div>` : ""}
-      <div class="eff">${m.reader_effect}</div></div></div>`);
-  const qs = v.questions.map(q => html`<div class="issue"><mark class="ask">${q.placeholder}</mark><div class="w">${q.question}</div></div>`);
-  const keep = (jd.keep || []).map(k => html`<div class="issue good"><blockquote>${k.quote}</blockquote><div class="w">${k.why}</div></div>`);
+  const moves = v.moves.map(m => html`<li class="move">
+      <div><span class="move-title">${m.title}</span> <span class="chip chip-neutral">${m.kind}</span></div>
+      ${m.target ? html`<p class="move-target">“${m.target}”</p>` : ""}
+      <p><b>Problem:</b> ${m.problem}</p>
+      <p><b>Do this:</b> ${m.change}</p>
+      ${m.rewrite ? html`<p class="move-new">${withAsks(m.rewrite)}</p>` : ""}
+      <p class="move-eff">${m.reader_effect}</p></li>`);
+  const qs = v.questions.map(q => html`<li><mark class="ask">${q.placeholder}</mark><p>${q.question}</p></li>`);
+  const keep = (jd.keep || []).map(k => html`<li class="issue"><blockquote class="quote">${k.quote}</blockquote><p class="issue-w">${k.why}</p></li>`);
   // The edited essay comes first and alone; the reasoning stays one click away for anyone who wants it.
-  return html`<h2>Your edited essay</h2>
-    <div class="banner ${v.verified ? "ok" : "no"}">${v.verified
-      ? html`<b>Verified.</b> A blind judge preferred it over your original and over a polish-only rewrite.`
-      : html`<b>Not verified.</b> Treat this as a starting point; the reasons are under "Why these changes".`}
-      ${nq ? html`<br><span class="caption">Replace the ${nq} highlighted bracket${nq > 1 ? "s" : ""} with true details, or cut ${nq > 1 ? "those lines" : "that line"}.</span>` : ""}</div>
-    <div class="panel"><h3><span>Edited essay</span><span>${v.checks.word_count}${v.meta.word_limit ? " / " + v.meta.word_limit : ""} words</span></h3>
-      <div class="toolbar"><button class="btn-link" id="copyDraft">Copy essay</button><button class="btn-link" id="editDraft">Edit and re-score</button>
-        <button class="btn-link on" data-view="clean">Essay</button><button class="btn-link" data-view="changes">Show changes</button></div>
+  return html`<div class="rev-head">
+      <h2 tabindex="-1">Your edited essay</h2>
+      <p class="rev-status">${v.verified
+        ? html`<span class="chip chip-win">${icon("check")}Verified</span><span>A blind judge preferred it over your original and over a polish-only rewrite, in both orders.</span>`
+        : html`<span class="chip chip-split">Not verified</span><span>Use it as a starting point. The checks it failed are under “Why these changes”.</span>`}</p>
+      ${nq ? html`<p class="hint">Replace the ${nq} highlighted bracket${nq > 1 ? "s" : ""} with true details, or cut ${nq > 1 ? "those lines" : "that line"}.</p>` : ""}
+    </div>
+    <div class="doc">
+      <div class="doc-bar">
+        <div class="seg-sm" role="group" aria-label="Show the essay or the changes"><button type="button" class="on" data-view="clean" aria-pressed="true">Essay</button><button type="button" data-view="changes" aria-pressed="false">Changes</button></div>
+        <span class="doc-count">${v.checks.word_count}${v.meta.word_limit ? " / " + v.meta.word_limit : ""} words</span>
+        <span class="spacer"></span>
+        <button type="button" class="btn btn-ghost btn-sm" id="copyDraft" data-label="Copy">${icon("copy")}<span class="label">Copy</span></button>
+        <button type="button" class="btn btn-ghost btn-sm" id="editDraft">${icon("edit")}<span class="label">Edit and re-score</span></button>
+      </div>
       <div class="draft" id="draftView">${withAsks(v.draft)}</div>
     </div>
-    ${qs.length ? html`<div class="panel"><h3><span>Fill in the brackets</span><span>answer from memory, or cut the line</span></h3>${qs}</div>` : ""}
-    <details class="why"><summary>Why these changes</summary>
-    ${banner}
-    <div class="cols">
-      <div>
-        <div class="panel"><h3>What it's really about</h3>
-          ${d.already_strong ? html`<p class="caption">The reviser judged this essay already strong, so the moves are small. Take only the ones you agree with.</p>` : ""}
+    ${qs.length ? html`<section class="section"><div class="section-head"><h3>Fill in the brackets</h3><span class="aside">Answer from memory, or cut the line</span></div><ul class="asks">${qs}</ul></section>` : ""}
+    <details class="disclosure why"><summary>Why these changes</summary><div class="disclosure-body">
+      <section class="sub"><h3>How it was checked</h3>${checked}</section>
+      <div class="grid-2">
+        <section class="sub"><h3>What it's really about</h3>
+          ${d.already_strong ? html`<p class="hint">The reviser judged this essay already strong, so the moves are small. Take only the ones you agree with.</p>` : ""}
           <p>${d.core}</p><p><b>Holding it back:</b> ${d.holding_back}</p>
-          ${d.best_material ? html`<blockquote class="bm">${d.best_material}</blockquote><div class="caption">your best material</div>` : ""}</div>
-        <div class="panel"><h3>Your voice</h3><p>${vc.sounds_like}</p>
-          ${vc.best_lines.map(q => html`<div class="issue good"><blockquote>${q}</blockquote></div>`)}
-          ${vc.off_voice.length ? html`<p class="caption">Lines that don't sound like you</p>${vc.off_voice.map(o => html`<div class="issue"><blockquote>${o.quote}</blockquote><div class="w">${o.why}</div></div>`)}` : ""}</div>
+          ${d.best_material ? html`<figure class="best"><blockquote class="quote">${d.best_material}</blockquote><figcaption>Your best material</figcaption></figure>` : ""}</section>
+        <section class="sub"><h3>Your voice</h3><p>${vc.sounds_like}</p>
+          ${vc.best_lines.map(q => html`<blockquote class="quote">${q}</blockquote>`)}
+          ${vc.off_voice.length ? html`<p class="hint">Lines that don't sound like you</p><ul class="issues">${vc.off_voice.map(o => html`<li class="issue"><blockquote class="quote">${o.quote}</blockquote><p class="issue-w">${o.why}</p></li>`)}</ul>` : ""}</section>
       </div>
-      <div class="panel"><h3><span>The moves</span><span>biggest first</span></h3>${moves.length ? moves : html`<p class="empty">No moves.</p>`}</div>
-    </div>
-    ${keep.length ? html`<div class="panel"><h3>What the judge thought your original did better</h3>${keep}</div>` : ""}
-    <p class="caption">The edit kept ${Math.round(v.diff.kept_share * 100)}% of your words.</p>
-    </details>`;
+      <section class="sub"><h3>The moves, biggest first</h3>${moves.length ? html`<ol class="moves">${moves}</ol>` : html`<p class="empty">No moves.</p>`}</section>
+      ${keep.length ? html`<section class="sub"><h3>What the judge thought your original did better</h3><ul class="issues">${keep}</ul></section>` : ""}
+      <p class="hint kept">The edit kept ${Math.round(v.diff.kept_share * 100)}% of your words.</p>
+    </div></details>`;
+}
+
+function paintRevising(p) {
+  const body = $("#betterBody");
+  if (!body) return;
+  let list = body.querySelector(".steps");
+  if (!list) {
+    mount(body, html`<ol class="steps" tabindex="-1" role="log" aria-live="polite" aria-label="Rewrite progress"></ol><p class="hint">This takes 2 to 5 minutes. The other tabs stay open to you meanwhile.</p>`);
+    list = body.querySelector(".steps");
+    if (lostFocus()) list.focus({ preventScroll: true });  // the start button that had focus is gone
+  }
+  syncSteps(list, p.steps, p.steps.length ? "Working" : "Starting the reviser");
 }
 
 async function startRevision() {
   const r = current;
+  if (!r || revising.has(key(r))) return;
+  const pending = { steps: [] };
+  revising.set(key(r), pending);
+  // The student may reopen this review mid-run, which puts a fresh copy on screen; update that copy too.
+  const live = () => (current && key(current) === key(r) ? current : null);
+  setTabState("rewrite", "busy");
+  paintRevising(pending);
   const body = r.id ? { review_id: r.id } : { essay: r.essay, ...r.meta };
-  mount($("#betterBody"), html`<ol class="ministeps"><li class="wait">Starting the reviser</li></ol>`);
   try {
     const job = await startJob("/api/revise", body);
-    const v = await pollJob(job, j => mount($("#betterBody"), html`<ol class="ministeps">${j.progress.map(p => html`<li>${p}</li>`)}${j.status === "running" ? html`<li class="wait">Working</li>` : ""}</ol>`));
-    r.revision = v;
-    if (current === r) mount($("#better"), revisionHtml(v));
-    if (current === r) {
-      // Until the chat has changed anything, it continues from the newest edit.
-      if (versions.length === 1) { versions = [v.draft]; showWorking(); }
-      saveWorking(r);
-    }
+    const v = await pollJob(job, j => { pending.steps = j.progress || []; if (live()) paintRevising(pending); });
+    revising.delete(key(r));
+    for (const x of new Set([r, live()])) if (x) x.revision = v;
+    const view = live();
+    if (!view) { toast("A rewrite finished for another review. Open that review from History to see it."); return; }
+    const refocus = lostFocus();
+    mount($("#better"), revisionHtml(v));
+    if (refocus || lostFocus()) $("#better h2").focus({ preventScroll: true });
+    // Until the chat has changed anything, it continues from the newest edit.
+    if (versions.length === 1) { versions = [v.draft]; showWorking(); }
+    saveWorking(view);
+    const cta = $("#rewriteCta .label");
+    if (cta) cta.textContent = "See the edited essay";
+    finishTab("rewrite", "Your edited essay is ready.");
   } catch (e) {
-    if (current === r) mount($("#better"), betterIntro(String(e)));
+    revising.delete(key(r));
+    if (!live()) { toast(`A rewrite for another review didn't finish: ${errText(e)}`); return; }
+    const refocus = lostFocus();
+    mount($("#better"), betterIntro(errText(e)));
+    if (refocus || lostFocus()) $("#betterBtn").focus({ preventScroll: true });
+    finishTab("rewrite", "The rewrite didn't finish.");
   }
 }
 
@@ -501,8 +1321,6 @@ const SUGGEST = [
   ["Cut 50 words", "Cut 50 words without losing anything good"],
   ["Does this sound like me?", "Does this sound like a real 17-year-old wrote it? Point to the lines that don't."],
 ];
-let versions = [];  // working drafts, oldest first; the last is on screen and is what the next message edits
-let chatBusy = null;  // key() of the review whose chat request is running
 const working = () => versions[versions.length - 1];
 const num = x => Number.isInteger(x) ? String(x) : x.toFixed(1);
 // Reopening a saved review loads a fresh copy, so reviews are matched by id rather than by object.
@@ -529,63 +1347,82 @@ function savedWorking(r) {
 function ratingHtml(g) {
   if (!g) return "";
   const short = g.target && g.after < g.target;
-  return html`<div class="rating"><div><b>${cap(g.aspect)}</b><span class="score">${num(g.before)} → ${num(g.after)}</span>/ 10
-      <span class="caption">blind judge, both orders</span></div>
-    ${g.after < 10 && g.to_ten ? html`<div class="w">${short ? `Short of your ${g.target}. ` : ""}What would make it a 10: ${g.to_ten}</div>` : ""}
-    <div class="w">${g.overall === "better" ? "The judge also preferred the whole essay after this change."
+  return html`<div class="rating">
+    <p class="rating-aspect">${cap(g.aspect)}</p>
+    <p class="rating-head"><span class="rating-score">${num(g.before)} → ${num(g.after)}</span><span class="rating-of">/ 10 · blind judge, both orders</span></p>
+    ${g.after < 10 && g.to_ten ? html`<p class="msg-note">${short ? `Short of your ${g.target}. ` : ""}What would make it a 10: ${g.to_ten}</p>` : ""}
+    <p class="msg-note">${g.overall === "better" ? "The judge also preferred the whole essay after this change."
       : g.overall === "worse" ? "The judge preferred the whole essay before this change."
-      : "The judge split on the whole essay, so this change may not help overall."}</div></div>`;
+      : "The judge split on the whole essay, so this change may not help overall."}</p></div>`;
 }
 
-function turnHtml(t, i) {
+const turnHtml = (t, i) => html`<div class="msg me">${t.message}</div>${botHtml(t, i)}`;
+function botHtml(t, i) {
   const fails = t.checks.failures;
   const asked = t.questions.filter(q => !t.base.includes(q.placeholder));  // the working essay already shows older brackets
-  return html`<div class="msg me">${t.message}</div>
-    <div class="msg bot"><div>${t.reply}</div>
+  return html`<div class="msg bot"><p>${t.reply}</p>
     ${t.edited ? html`
       ${t.changes.length ? html`<ul class="changes">${t.changes.map(c => html`<li>${c}</li>`)}</ul>` : ""}
-      ${fails.length ? html`<div class="banner no"><b>Not applied.</b> Your working essay was left as it was, because these checks failed:<ul>${fails.map(f => html`<li>${f}</li>`)}</ul></div>` : ""}
+      ${fails.length ? html`<div class="notice notice-warn">${icon("alert")}<div><b>Not applied.</b> Your working essay stayed as it was, because these checks failed:<ul>${fails.map(f => html`<li>${f}</li>`)}</ul></div></div>` : ""}
       ${ratingHtml(t.rating)}
-      ${(t.checks.inherited || []).length ? html`<div class="w">Already in your working essay before this change, and never stated in your original: ${t.checks.inherited.map(i => html`<q>${i.text}</q> `)}</div>` : ""}
-      ${t.checks.inherited_voice ? html`<div class="w">Your working essay already sounded less like you before this change: ${t.checks.inherited_voice}</div>` : ""}
-      ${asked.length ? html`<div class="w">New questions. Fill them in with true details, or cut the line:</div>${asked.map(q => html`<div class="w"><mark class="ask">${q.placeholder}</mark> ${q.question}</div>`)}` : ""}
-      <div class="toolbar"><button class="btn-link" data-turn="${i}" data-act="diff">Show what changed</button><button class="btn-link" data-turn="${i}" data-act="use">${t.passed ? "Use this version" : "Use this version anyway"}</button></div>` : ""}
+      ${(t.checks.inherited || []).length ? html`<p class="msg-note">Already in your working essay before this change, and never stated in your original: ${t.checks.inherited.map(i => html`<q>${i.text}</q> `)}</p>` : ""}
+      ${t.checks.inherited_voice ? html`<p class="msg-note">Your working essay already sounded less like you before this change: ${t.checks.inherited_voice}</p>` : ""}
+      ${asked.length ? html`<p class="msg-note">New questions. Fill them in with true details, or cut the line:</p>${asked.map(q => html`<p class="msg-note"><mark class="ask">${q.placeholder}</mark> ${q.question}</p>`)}` : ""}
+      <div class="msg-actions"><button type="button" class="btn btn-secondary btn-sm" data-turn="${i}" data-act="diff" aria-pressed="false">Show what changed</button><button type="button" class="btn btn-secondary btn-sm" data-turn="${i}" data-act="use">${t.passed ? "Use this version" : "Use this version anyway"}</button></div>` : ""}
     </div>`;
 }
 
 // Only changes that passed every check replace the working essay; the rest wait for "Use this version anyway".
 const applied = t => t.edited && t.passed;
 
-function threadHtml(r, pending) {
+function threadHtml(r) {
   const out = (r.chat || []).map(turnHtml);
-  if (pending) out.push(html`<div class="msg me">${pending.message}</div><div class="msg bot">${pending.error
-    ? html`<div class="err">${pending.error}</div>`
-    : html`<ol class="ministeps">${pending.steps.map(s => html`<li>${s}</li>`)}<li class="wait">Working</li></ol>`}</div>`);
-  return out.length ? html`${out}` : html`<p class="empty">Nothing yet. Ask for a change, or ask a question about the essay.</p>`;
+  return out.length ? html`${out}` : html`<p class="empty thread-empty">Nothing yet. Ask for a change, or ask a question about the essay.</p>`;
 }
+// The thread is a live log, so a running request only appends or edits its own two messages.
+// No role="alert" on the error: the log already announces it.
+const pendingBody = p => p.error
+  ? html`<div class="notice notice-error">${icon("alert")}<div>${p.error}</div></div>`
+  : html`<ol class="steps">${p.steps.map(s => html`<li data-text="${s}">${s}</li>`)}<li class="wait">Working</li></ol>`;
+const pendingHtml = p => html`<div class="msg me" data-req="${p.id}">${p.message}</div><div class="msg bot pending" data-req="${p.id}">${pendingBody(p)}</div>`;
+let reqSeq = 0;
+const enterLast = (box, n) => [...box.children].filter(x => x.classList.contains("msg")).slice(-n).forEach(x => x.classList.add("enter"));
 
 function chipsHtml(r) {
   const turns = r.chat || [];
-  if (!turns.length) return html`${SUGGEST.map(([label, say]) => html`<button class="btn-link chip" data-say="${say}">${label}</button>`)}`;
+  if (!turns.length) return html`${SUGGEST.map(([label, say]) => html`<button type="button" class="suggest" data-say="${say}">${label}</button>`)}`;
   // The judge's note describes that change's draft, so it is offered only while that draft is on screen.
   const last = turns[turns.length - 1], g = applied(last) && last.draft === working() && last.rating;
   return g && g.target && g.after < g.target && g.to_ten
-    ? html`<button class="btn-link chip" data-say="${`Push ${g.aspect} closer to a ${g.target}.`}" data-advice="${g.to_ten}">Push ${g.aspect} closer to ${g.target}</button>`
+    ? html`<button type="button" class="suggest" data-say="${`Push ${g.aspect} closer to a ${g.target}.`}" data-advice="${g.to_ten}">Push ${g.aspect} closer to ${g.target}</button>`
     : html``;
 }
 
 function chatHtml(r) {
-  return html`<h2>Ask for changes</h2>
-    <p class="lede">Type what you want changed, like "make the hook a 10/10" or "cut 50 words", or ask a question. Each change keeps your facts and voice, gets the same invented-fact check as above, and a blind judge scores the part you asked about before and after. On that judge's scale a 10 is the best essay in a reading season, so it will tell you what is still missing. A change takes 1 to 3 minutes and about 4 model calls (up to 8 if the first try fails a check); a question takes one.</p>
-    <div class="chatcols">
-      <div class="panel"><h3><span>Working essay</span><span id="chatWc"></span></h3>
-        <div class="toolbar"><button class="btn-link" id="chatCopy">Copy essay</button><button class="btn-link" id="chatUndo">Undo last change</button><button class="btn-link" id="chatRescore">Edit and re-score</button></div>
-        <div class="draft" id="chatDraft"></div></div>
-      <div class="panel chatpanel">
-        <div class="thread" id="thread">${threadHtml(r)}</div>
+  return html`<div class="chat-intro">
+      <h2>Ask for changes</h2>
+      <p class="lede">Ask for a change, like “make the hook a 10/10” or “cut 50 words”, or ask a question about the essay.</p>
+      <details class="disclosure sm"><summary>How changes are checked</summary><div class="disclosure-body">
+        <p>Each change keeps your facts and voice and gets the same invented-fact check as the rewrite. A blind judge scores the part you asked about before and after. On that judge's scale a 10 is the best essay in a reading season, so it tells you what is still missing. Only a change that passes every check replaces your working essay. Claude runs these checks too, so read each change against what happened.</p>
+        <p>A change takes 1 to 3 minutes and about 4 model calls, up to 8 if the first try fails a check. A question takes one.</p>
+      </div></details>
+    </div>
+    <div class="chat-layout">
+      <div class="doc">
+        <div class="doc-bar"><h3 class="doc-title">Working essay</h3><span class="doc-count" id="chatWc"></span><span class="spacer"></span>
+          <button type="button" class="btn btn-ghost btn-sm" id="chatCopy" data-label="Copy" aria-label="Copy the working essay">${icon("copy")}<span class="label">Copy</span></button>
+          <button type="button" class="btn btn-ghost btn-sm" id="chatUndo" aria-label="Undo last change" title="Undo last change">${icon("undo")}<span class="label">Undo</span></button>
+          <button type="button" class="btn btn-ghost btn-sm" id="chatRescore">${icon("edit")}<span class="label">Edit and re-score</span></button></div>
+        <div class="draft" id="chatDraft"></div>
+      </div>
+      <div class="chatpanel">
+        <div class="thread" id="thread" role="log" aria-live="polite" aria-label="Conversation">${threadHtml(r)}</div>
         <div class="chips" id="chips">${chipsHtml(r)}</div>
-        <textarea id="chatInput" rows="3" placeholder="What should change? Enter sends; Shift+Enter starts a new line."></textarea>
-        <div class="send"><span class="caption">Edits the working essay</span><button class="go inline" id="chatSend">Send</button></div>
+        <div class="composer">
+          <label class="sr-only" for="chatInput">Message</label>
+          <textarea id="chatInput" rows="3" placeholder="What should change?"></textarea>
+          <div class="send"><span class="hint">Enter sends · Shift+Enter adds a line</span><button type="button" class="btn btn-primary" id="chatSend">Send</button></div>
+        </div>
       </div>
     </div>`;
 }
@@ -599,9 +1436,18 @@ function showWorking(turnIndex) {
   const lim = r.meta && r.meta.word_limit;
   $("#chatWc").textContent = t ? `what message ${turnIndex + 1} changed`
     : `${words(working())}${lim ? " / " + lim : ""} words` + (versions.length > 1 ? ` · version ${versions.length}` : "");
-  const busy = chatBusy === key(r);
+  const busy = chatting.has(key(r));
   $("#chatUndo").disabled = versions.length < 2 || busy;
   if (!busy) mount($("#chips"), chipsHtml(r));
+  // The turn buttons follow the working essay: which diff is showing, and which version is already in use.
+  document.querySelectorAll("#thread [data-act]").forEach(b => {
+    const tt = (r.chat || [])[+b.dataset.turn];
+    if (!tt) return;
+    if (b.dataset.act === "diff") { b.setAttribute("aria-pressed", String(b.dataset.turn === box.dataset.turn)); return; }
+    const inUse = tt.draft === working();
+    b.disabled = busy || inUse;
+    b.textContent = inUse ? "In use" : tt.passed ? "Use this version" : "Use this version anyway";
+  });
 }
 
 function initChat(r) {
@@ -626,56 +1472,118 @@ function initChat(r) {
   showWorking();
 }
 
-async function sendChat(text, advice) {
+async function sendChat(text, advice, fromInput) {
   const r = current, message = (text || "").trim();
-  if (!message || !r || chatBusy === key(r)) return;
-  chatBusy = key(r);
-  const pending = { message, steps: [] };
+  if (!message || !r || chatting.has(key(r))) return;
+  const pending = { id: String(++reqSeq), message, steps: [] };
   // The student may reopen this review mid-request, which puts a fresh copy on screen; update that copy too.
   const live = () => (current && key(current) === key(r) ? current : null);
   const paint = () => {
-    const view = live();
-    if (!view) return;
-    mount($("#thread"), threadHtml(view, pending));
-    $("#thread").scrollTop = $("#thread").scrollHeight;
+    if (!live()) return;
+    const thread = $("#thread"), input = $("#chatInput");
+    // Controls about to be disabled or removed would drop focus to the page, so it waits in the message box.
+    const a = document.activeElement;
+    if (a && a.closest("#chatSend, #chatUndo, #chips, #thread [data-act='use']")) input.focus({ preventScroll: true });
+    // New steps are followed only from the bottom, so a student who scrolled up to reread keeps their place.
+    const h = thread.scrollHeight, atEnd = h - thread.scrollTop - thread.clientHeight < 48;
+    thread.querySelectorAll(".msg[data-req]").forEach(m => { if (m.dataset.req !== pending.id) m.remove(); });
+    const bot = thread.querySelector(`.msg.bot[data-req="${pending.id}"]`);
+    if (!bot) {
+      const empty = thread.querySelector(".thread-empty");
+      if (empty) empty.remove();
+      thread.append(fragment(pendingHtml(pending)));
+      enterLast(thread, 2);
+      toBottom(thread, true);
+    } else {
+      if (pending.error) { mount(bot, pendingBody(pending)); bot.classList.add("enter"); }
+      else syncSteps(bot.querySelector(".steps"), pending.steps, "Working");
+      if (atEnd && thread.scrollHeight !== h) toBottom(thread, true);
+    }
     mount($("#chips"), html``);
-    $("#chatInput").disabled = $("#chatSend").disabled = $("#chatUndo").disabled = true;
+    input.readOnly = true;
+    $("#chatSend").disabled = $("#chatUndo").disabled = true;
+    thread.querySelectorAll('[data-act="use"]').forEach(b => { b.disabled = true; });
+    setTabState("chat", "busy");
   };
-  $("#chatInput").value = "";
+  const req = { paint };
+  chatting.set(key(r), req);
+  if (fromInput) $("#chatInput").value = "";
   paint();
   const body = r.id ? { review_id: r.id } : { essay: r.essay, ...r.meta };
   Object.assign(body, { message, advice: advice || "", draft: working(), history: (r.chat || []).flatMap(t => [{ role: "user", text: t.message },
     { role: "assistant", text: t.reply + (t.edited && !t.passed ? " (Not applied: it failed the checks, so the draft stayed as it was.)" : "") }]) });
-  let failed = false;
+  let failed = false, turn = null;
   try {
     const job = await startJob("/api/chat", body);
-    const t = await pollJob(job, j => { pending.steps = j.progress; paint(); });
+    const t = await pollJob(job, j => { pending.steps = j.progress || []; paint(); });
+    turn = t;
     // A copy reopened after the server saved this turn already has it.
     const has = x => (x.chat || []).some(c => c.created === t.created && c.message === t.message);
     for (const x of new Set([r, live()])) if (x && !has(x)) x.chat = [...(x.chat || []), t];
     if (live() && applied(t) && working() !== t.draft) versions.push(t.draft);
   } catch (e) {
     failed = true;
-    pending.error = String(e);
+    pending.error = errText(e);
     paint();
   } finally {
-    if (chatBusy === key(r)) chatBusy = null;
-    const view = live();
-    if (view) {
-      if (!failed) { mount($("#thread"), threadHtml(view)); $("#thread").scrollTop = $("#thread").scrollHeight; }
-      $("#chatInput").disabled = $("#chatSend").disabled = false;
-      if (failed) $("#chatInput").value = message;
-      saveWorking(view);
+    if (chatting.get(key(r)) === req) chatting.delete(key(r));
+    const shown = live();
+    if (shown) {
+      const thread = $("#thread");
+      if (!failed) {
+        const atEnd = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 48;
+        const bot = thread.querySelector(`.msg.bot[data-req="${pending.id}"]`), me = thread.querySelector(`.msg.me[data-req="${pending.id}"]`);
+        // A copy reopened after the server saved the turn rendered it already; drop the placeholder instead.
+        const rendered = thread.querySelectorAll(".msg.bot:not([data-req])").length >= shown.chat.length;
+        let replaced = false;
+        if (rendered) { if (bot) bot.remove(); if (me) me.remove(); }
+        else if (bot) {
+          if (me) me.removeAttribute("data-req");
+          bot.replaceWith(fragment(botHtml(turn, shown.chat.findIndex(c => c.created === turn.created && c.message === turn.message))));
+          enterLast(thread, 1);
+          replaced = true;
+        } else mount(thread, threadHtml(shown));
+        // A reply can be taller than the thread, so it opens at the student's message instead of at its last line.
+        if (atEnd) { if (replaced && me) reveal(thread, me); else toBottom(thread, true); }
+      }
+      $("#chatInput").readOnly = false;
+      $("#chatSend").disabled = false;
+      if (failed && fromInput && !$("#chatInput").value) $("#chatInput").value = message;
+      saveWorking(shown);
       showWorking();
+      setTabCount("chat", (shown.chat || []).length);
+      if (view === "report" && tab === "chat" && (!document.activeElement || document.activeElement === document.body)) $("#chatInput").focus({ preventScroll: true });
+      finishTab("chat", failed ? "Your message didn't go through."
+        : !turn.edited ? "Your question has an answer."
+        : applied(turn) ? "Your change is ready." : "Your change failed a check, so the working essay stayed as it was.");
+    } else {
+      if (failed && fromInput) unsent.set(key(r), message);
+      toast(!failed ? "A change to another review finished. Open that review from History to see it."
+        : fromInput ? "A change to another review didn't finish. Your message waits in that review's box." : "A change to another review didn't finish.");
     }
   }
 }
 
 function tierLabel(t) { return t === "exemplar" ? "published by admissions office" : t === "admitted" ? "admitted student" : t; }
 
+// ---- report ------------------------------------------------------------------
+const BANDS = [0, 35, 50, 65, 75, 85, 93];  // the thresholds in rubric.band
+function rulerHtml(score) {
+  const s = Math.max(0, Math.min(100, score)), edges = [...BANDS, 100];
+  let on = 0;
+  BANDS.forEach((b, k) => { if (s >= b) on = k; });
+  return html`<div class="ruler" role="img" aria-label="${`Score ${Math.round(score)} on a scale of 0 to 100, with band thresholds at 35, 50, 65, 75, 85 and 93.`}">
+    <div class="ruler-track">${BANDS.map((b, k) => html`<span class="band${k === on ? " on" : ""}" style="left:${b}%;width:${edges[k + 1] - b}%"></span>`)}<span class="ruler-marker once" style="--p:${s}"></span></div>
+    <div class="ruler-labels" aria-hidden="true"><span style="left:0%">0</span>${BANDS.slice(1).map(b => html`<span style="left:${b}%">${b}</span>`)}<span style="left:100%">100</span></div>
+  </div>`;
+}
+const VERDICT = { win: "Win", loss: "Loss", split: "Split" };
+const verdictChip = v => html`<span class="chip chip-${v}">${VERDICT[v] || v}</span>`;
+const sourceLink = (url, title) => html`<a href="${safeUrl(url)}" target="_blank" rel="noopener">Source<span class="sr-only"> for ${title}</span>${icon("external")}</a>`;
+
 function render(r) {
-  show("report");
   current = r;
+  if (ready && key(ready) === key(r)) setReady(null);
   const h2h = r.head_to_head || [];
   const cal = r.calibration || [];
   const tally = xs => { const t = { win: 0, loss: 0, split: 0 }; xs.forEach(x => t[x.verdict]++); return `won ${t.win}, lost ${t.loss}, split ${t.split}` + (t.split ? "; splits carry no weight" : ""); };
@@ -685,173 +1593,329 @@ function render(r) {
   const math = parts.length
     ? `Rubric ${r.rubric_score.toFixed(1)} → final ${r.score.toFixed(1)} after blind comparisons against ${parts.join(" and ")}.`
     : `Rubric-only score (${r.rubric_score.toFixed(1)}); no comparisons ran.`;
-  // Saved reviews from before the ladder compared against private drafts with no opponent card.
-  const calHtml = [...cal].sort((a, b) => a.level - b.level).map(c => { const o = c.opponent; return html`<div class="h2h"><div class="res ${c.verdict}">${c.verdict.toUpperCase()}</div><div>
-      <div class="title">${o ? (o.title || o.id) : `an essay experts rated ${c.rating} / 9`}</div>
-      <div class="meta">${c.label || "private draft"} · ≈ ${Math.round(c.level)} on this scale${o ? html` · <a href="${safeUrl(o.url)}" target="_blank" rel="noopener">source</a>` : ""}</div>
-      <p><b>Why:</b> ${c.decisive_difference}</p>
-      ${o && c.verdict !== "win" && c.lesson ? html`<p><b>Take from it:</b> ${c.lesson}</p>` : ""}
-      ${o ? html`<details><summary>Read their essay</summary><pre>${o.text}</pre></details>` : ""}</div></div>`; });
   const readers = r.readers;
-  const ai = readers.map(x => x.ai_suspicion).find(a => a.level === "medium" || a.level === "high");
+  const ai = readers.map(x => x.ai_suspicion || {}).find(a => a.level === "medium" || a.level === "high");
 
-  const cats = CATS.map(c => {
+  const cats = CATS.map((c, i) => {
     const s = r.categories[c];
     return html`<div class="cat">
-      <div class="name">${cap(c)}</div>
-      <div class="track"><div class="median"></div><div class="fill" style="width:${s.score * 10}%"></div>
-        <div class="tick" style="left:calc(${s.reader_1 * 10}% - 1px)" title="Admissions officer: ${s.reader_1}"></div>
-        <div class="tick b" style="left:calc(${s.reader_2 * 10}% - 1px)" title="Editor: ${s.reader_2}"></div></div>
-      <div class="val">${s.score.toFixed(1)}</div>
-      <div class="cat-detail">
-        ${s.adjudicated ? html`<b>Readers split ${s.reader_1} vs ${s.reader_2}; adjudicated:</b> ${s.adjudication_reason}<br>` : ""}
-        <b>AO:</b> ${s.justification[0]}<br><b>Editor:</b> ${s.justification[1]}
-        ${s.quote ? html`<br><q>${s.quote}</q>` : ""}<br><b>To gain a point:</b> ${s.to_raise}</div>
+      <button type="button" class="cat-head" aria-expanded="false" aria-controls="cat-${c}">
+        <span class="cat-name">${cap(c)}</span>
+        <span class="track" aria-hidden="true"><span class="median"></span><span class="fill once" style="width:${s.score * 10}%;--i:${i}"></span>
+          <span class="tick a" style="left:${s.reader_1 * 10}%"></span><span class="tick b" style="left:${s.reader_2 * 10}%"></span></span>
+        <span class="cat-val">${s.score.toFixed(1)}</span>
+        <span class="sr-only">out of 10. ${readers[0].name} ${s.reader_1}, ${readers[1].name} ${s.reader_2}.</span>
+        ${icon("chevron")}
+      </button>
+      <div class="cat-body" id="cat-${c}"><div class="cat-inner"><dl class="cat-detail">
+        ${s.adjudicated ? html`<div><dt>Readers split ${s.reader_1} vs ${s.reader_2}, adjudicated</dt><dd>${s.adjudication_reason}</dd></div>` : ""}
+        <div><dt>${readers[0].name}</dt><dd>${s.justification[0]}</dd></div>
+        <div><dt>${readers[1].name}</dt><dd>${s.justification[1]}</dd></div>
+        ${s.quote ? html`<blockquote class="quote">${s.quote}</blockquote>` : ""}
+        <div><dt>To gain a point</dt><dd>${s.to_raise}</dd></div>
+      </dl></div></div>
     </div>`;
   });
 
   // Older saved reviews lack the server-side merged lists.
   const problems = (r.problems || readers.flatMap(x => x.weaknesses)
     .sort((a, b) => (a.severity === "major" ? 0 : 1) - (b.severity === "major" ? 0 : 1)))
-    .map(w => html`<div class="issue"><div class="t"><span class="pill ${w.severity}">${w.severity}</span>${w.issue}</div><blockquote>${w.quote}</blockquote><div class="w">${w.why_it_matters}</div></div>`);
+    .map(w => html`<li class="issue"><p class="issue-t"><span class="chip chip-${w.severity === "major" ? "major" : "minor"}">${cap(w.severity)}</span>${w.issue}</p><blockquote class="quote">${w.quote}</blockquote><p class="issue-w">${w.why_it_matters}</p></li>`);
   const strengths = (r.strengths || readers.flatMap(x => x.strengths))
-    .map(s => html`<div class="issue good"><div class="t">${s.what}</div><blockquote>${s.quote}</blockquote></div>`);
+    .map(s => html`<li class="issue"><p class="issue-t">${s.what}</p><blockquote class="quote">${s.quote}</blockquote></li>`);
   const fixes = (readers[1].top_fixes.length ? readers[1].top_fixes : readers[0].top_fixes).slice(0, 3)
-    .map((f, i) => html`<div class="issue"><div class="t">${i + 1}. ${f.fix}</div><div class="w">${f.why}</div></div>`);
+    .map(f => html`<li><p class="fix-t">${f.fix}</p><p class="fix-w">${f.why}</p></li>`);
 
-  const edits = r.edits.map((e, i) => html`<div class="edit ${e.severity}" data-i="${i}">
-      <div><span class="pill">${e.category}</span><span class="orig">“${e.original}”</span></div>
-      <div class="sugg">${e.kind === "cut" ? html`<b>CUT</b>` : e.kind === "rewrite" ? html`<b>REWRITE</b>${e.suggestion}` : html`<b>NOTE</b>${e.suggestion}`}</div>
-      <div class="why">${e.problem}</div></div>`);
+  const edits = r.edits.map((e, i) => html`<li><button type="button" class="edit ${e.severity}" data-i="${i}">
+      <span class="edit-meta"><span class="chip chip-neutral">${cap(e.category)}</span>${e.severity === "major" ? html`<span class="chip chip-major">Major</span>` : html`<span class="chip chip-minor">Minor</span>`}</span>
+      <span class="edit-orig">“${e.original}”</span>
+      <span>${e.kind === "cut" ? html`<b>Cut it.</b>` : e.kind === "rewrite" ? html`<b>Rewrite:</b> ${e.suggestion}` : html`<b>Note:</b> ${e.suggestion}`}</span>
+      <span class="edit-why">${e.problem}</span></button></li>`);
 
   const h2hHtml = h2h.map(h => {
     const o = h.opponent;
     const meta = [o.school, o.year, tierLabel(o.tier)].filter(Boolean).join(" · ");
-    return html`<div class="h2h"><div class="res ${h.verdict}">${h.verdict.toUpperCase()}</div><div>
-      <div class="title">${o.title || o.id}</div><div class="meta">${meta} · <a href="${safeUrl(o.url)}" target="_blank" rel="noopener">source</a></div>
+    return html`<article class="match">
+      <div class="match-head">${verdictChip(h.verdict)}<h3 class="match-title">${o.title || o.id}</h3></div>
+      <p class="match-meta">${meta ? `${meta} · ` : ""}${sourceLink(o.url, o.title || o.id)}</p>
       <p><b>Why:</b> ${h.decisive_difference}</p>
       ${h.verdict !== "win" ? html`<p><b>Take from it:</b> ${h.lesson}</p>` : ""}
-      ${h.stronger_quote ? html`<p class="sq">“${h.stronger_quote}”</p>` : ""}
-      <details><summary>Read their essay</summary><pre>${o.text}</pre></details></div></div>`;
+      ${h.stronger_quote ? html`<blockquote class="quote">${h.stronger_quote}</blockquote>` : ""}
+      <details class="disclosure sm"><summary>Read their essay</summary><div class="opp">${o.text}</div></details></article>`;
   });
+  // Saved reviews from before the ladder compared against private drafts with no opponent card.
+  const rung = c => { const o = c.opponent; return html`<li class="rung">
+      <div class="rung-head"><span class="rung-level">≈ ${Math.round(c.level)}</span>${verdictChip(c.verdict)}<h3 class="rung-title">${o ? (o.title || o.id) : `An essay experts rated ${c.rating} / 9`}</h3></div>
+      <p class="match-meta">${c.label || "private draft"}${o ? html` · ${sourceLink(o.url, o.title || o.id)}` : ""}</p>
+      <p><b>Why:</b> ${c.decisive_difference}</p>
+      ${o && c.verdict !== "win" && c.lesson ? html`<p><b>Take from it:</b> ${c.lesson}</p>` : ""}
+      ${o ? html`<details class="disclosure sm"><summary>Read their essay</summary><div class="opp">${o.text}</div></details>` : ""}</li>`; };
+  const ladder = [...cal].sort((a, b) => b.level - a.level);
+  const youAt = ladder.findIndex(c => c.level < r.score);
+  const rungs = ladder.map(rung);
+  rungs.splice(youAt < 0 ? rungs.length : youAt, 0, html`<li class="rung you"><div class="rung-head"><span class="rung-level">${Math.round(r.score)}</span><span class="chip chip-you">You</span><h3 class="rung-title">Your essay</h3></div></li>`);
   const moreSimilar = (r.similar || []).filter(s => !h2h.some(h => h.opponent.id === s.id))
-    .map(s => html`<div class="issue"><div class="t"><a href="${safeUrl(s.url)}" target="_blank" rel="noopener">${s.title || s.id}</a> <span class="meta">${s.school || s.source}</span></div><div class="w">${s.why_similar}</div></div>`);
+    .map(s => html`<li class="issue similar"><a href="${safeUrl(s.url)}" target="_blank" rel="noopener">${s.title || s.id}</a> <span class="match-meta">${s.school || s.source}</span><p class="issue-w">${s.why_similar}</p></li>`);
 
   const lt = r.lint;
   const lintHtml = lt.hits.length
-    ? html`<ul class="lint">${lt.hits.map(h => html`<li><span class="sev ${h.severity}">${h.severity}</span>${h.message}${h.examples && h.examples.length ? html` <span class="ex">(${h.examples.slice(0, 6).join(", ")})</span>` : ""}</li>`)}</ul>`
+    ? html`<ul class="lint">${lt.hits.map(h => html`<li><span class="chip chip-${h.severity === "major" ? "major" : h.severity === "minor" ? "minor" : "info"}">${cap(String(h.severity))}</span><span>${h.message}${h.examples && h.examples.length ? html` <span class="lint-ex">(${h.examples.slice(0, 6).join(", ")})</span>` : ""}</span></li>`)}</ul>`
     : html`<p class="empty">No mechanical red flags.</p>`;
   const dropped = readers.reduce((n, x) => n + (x._unverified_quotes_dropped || 0), 0);
+  const nCompare = h2h.length + cal.length, nChat = (r.chat || []).length;
+  const counts = { edits: r.edits.length, compare: nCompare, chat: nChat };
 
   mount($("#report"), html`
-    <div class="verdict">
-      <div class="stamp"><div class="num">${Math.round(r.score)}</div><div class="of">/ 100</div><div class="bandtag">${r.band}</div></div>
-      <div>
-        <h1>${r.band}.</h1>
+    <header class="report-head">
+      <p class="score"><span class="sr-only">Score: ${Math.round(r.score)} out of 100.</span><span aria-hidden="true"><span id="scoreNum">${Math.round(r.score)}</span><span class="score-of">/100</span></span></p>
+      <div class="verdict">
+        <h1 tabindex="-1">${r.band}</h1>
         <p class="desc">${r.band_description}</p>
-        <div class="math">${math}</div>
-        <div class="committee">“${readers[0].committee_line}”<br><span class="caption">What the AO would say in committee</span></div>
+      </div>
+      ${rulerHtml(r.score)}
+      <figure class="committee"><blockquote>“${readers[0].committee_line}”</blockquote><figcaption>What the admissions officer would say in committee</figcaption></figure>
+      <details class="disclosure sm math"><summary>How this score was calculated</summary><p>${math}</p></details>
+    </header>
+    <div class="tabs"><div class="tablist" role="tablist" aria-label="Report sections">
+      ${TABS.map(([k, label], i) => html`<button type="button" class="tab" role="tab" id="tabbtn-${k}" data-tab="${k}" aria-controls="tab-${k}" aria-selected="${String(i === 0)}" tabindex="${i === 0 ? 0 : -1}">${label}${k in counts ? html`<span class="count"${counts[k] ? "" : html` hidden`}>${counts[k]}</span>` : ""}<span class="state" aria-hidden="true"></span><span class="sr-only sr-state"></span></button>`)}
+      <span class="tab-ind" aria-hidden="true"></span>
+    </div></div>
+
+    <div class="tabpanel" id="tab-feedback" role="tabpanel" aria-labelledby="tabbtn-feedback" tabindex="-1">
+      ${ai ? html`<div class="notice notice-error ai-flag">${icon("alert")}<div><b>AI or over-editing flag (${ai.level}).</b> ${ai.evidence}</div></div>` : ""}
+      <div class="grid-2 wide-left section">
+        <section><div class="section-head"><h2>Fix these first</h2></div>${fixes.length ? html`<ol class="fixes">${fixes}</ol>` : html`<p class="empty">None given.</p>`}</section>
+        <section><div class="section-head"><h2>What each reader remembers</h2></div><div class="readers">
+          ${readers.map((x, i) => html`<div><p class="reader-name"><span class="tick ${i ? "b" : "a"}" aria-hidden="true"></span>${x.name}</p><p class="reader-text">${x.first_impression}</p></div>`)}</div></section>
+      </div>
+      <section class="section"><div class="section-head"><h2>Category scores</h2><span class="aside">Out of 10 · open a row for the reasons</span></div>
+        <div class="cats">${cats}</div>
+        <p class="legend" aria-hidden="true"><span><span class="lg-bar"></span>Merged score</span><span><span class="tick a"></span>${readers[0].name}</span><span><span class="tick b"></span>${readers[1].name}</span><span><span class="lg-median"></span>Median applicant (5)</span></p>
+      </section>
+      <div class="grid-2 section">
+        <section><div class="section-head"><h2>Biggest problems</h2></div>${problems.length ? html`<ul class="issues">${problems}</ul>` : html`<p class="empty">None listed.</p>`}</section>
+        <section><div class="section-head"><h2>What works</h2><span class="aside">Each one quoted from your essay</span></div>${strengths.length ? html`<ul class="issues">${strengths}</ul>` : html`<p class="empty">Neither reader found a line worth quoting as a strength.</p>`}</section>
+      </div>
+      <section class="section"><div class="section-head"><h2>Mechanical checks</h2><span class="aside">${lt.word_count}${lt.word_limit ? " / " + lt.word_limit : ""} words · reading grade ${lt.reading_grade}</span></div>${lintHtml}
+        ${dropped ? html`<p class="empty dropped">${dropped} reviewer claim${dropped > 1 ? "s were" : " was"} dropped because the quote did not appear in your essay.</p>` : ""}</section>
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="rewriteCta" data-goto="rewrite"><span class="label">${r.revision ? "See the edited essay" : "Make it a lot better"}</span>${icon("right")}</button>
+        <button type="button" class="btn btn-secondary" id="reviseBtn">${icon("edit")}<span class="label">Edit and re-score</span></button>
       </div>
     </div>
-    ${ai ? html`<div class="ai-flag"><b>AI / over-editing flag (${ai.level}):</b> ${ai.evidence}</div>` : ""}
-    <section class="better" id="better">${r.revision ? revisionHtml(r.revision) : betterIntro()}</section>
-    <section class="chatbox" id="chat">${chatHtml(r)}</section>
-    <div class="cols">
-      <div>
-        <div class="panel"><h3><span>Scores</span><span>tap a row for reasons</span></h3>${cats}
-          <div class="legend"><i style="background:var(--ink)"></i>merged<i style="background:var(--red);width:2px"></i>AO<i style="background:var(--blue);width:2px"></i>editor · dashed line = median applicant (5)</div></div>
-        <div class="panel"><h3>What a reader remembers</h3>
-          ${readers.map(x => html`<p><span class="reader-name">${x.name}</span><br>${x.first_impression}</p>`)}</div>
-        <div class="panel"><h3>Marked-up essay <span>${r.edits.length} edits</span></h3><div class="essay">${markedEssay(r.essay, r.edits, lt.hits)}</div></div>
-      </div>
-      <div>
-        <div class="panel"><h3>Highest-impact fixes</h3>${fixes.length ? fixes : html`<p class="empty">None given.</p>`}</div>
-        <div class="panel"><h3>Line edits</h3><div class="editlist">${edits.length ? edits : html`<p class="empty">No edits.</p>`}</div></div>
+
+    <div class="tabpanel" id="tab-edits" role="tabpanel" aria-labelledby="tabbtn-edits" tabindex="-1" hidden>
+      <div class="edits-layout">
+        <div class="doc doc-read"><div class="essay">${markedEssay(r.essay, r.edits, lt.hits)}</div></div>
+        <aside class="editlist" aria-label="Line edits">
+          <p class="legend"><span><span class="lg-mark lg-major"></span>Major</span><span><span class="lg-mark lg-minor"></span>Minor</span><span><span class="lg-lint"></span>Mechanical flag</span></p>
+          ${edits.length ? html`<ol class="edit-cards">${edits}</ol>` : html`<p class="empty">No edits.</p>`}
+        </aside>
       </div>
     </div>
-    <div class="cols">
-      <div class="panel"><h3>Biggest problems</h3>${problems.length ? problems : html`<p class="empty">None listed.</p>`}</div>
-      <div class="panel"><h3>What works <span>quoted or it didn't count</span></h3>${strengths.length ? strengths : html`<p class="empty">Neither reader found a line worth quoting as a strength.</p>`}</div>
+
+    <div class="tabpanel" id="tab-rewrite" role="tabpanel" aria-labelledby="tabbtn-rewrite" tabindex="-1" hidden>
+      <section class="better" id="better">${r.revision ? revisionHtml(r.revision) : betterIntro()}</section>
     </div>
-    ${h2h.length ? html`<div class="panel"><h3><span>Head-to-head vs similar published essays</span><span>blind · judged in both orders</span></h3>${h2hHtml}</div>` : ""}
-    ${cal.length ? html`<div class="panel"><h3><span>Calibration vs essays of known standing</span><span>blind · judged in both orders</span></h3>${calHtml}</div>` : ""}
-    ${moreSimilar.length ? html`<div class="panel"><h3>More similar essays worth reading</h3>${moreSimilar}</div>` : ""}
-    <div class="panel"><h3><span>Mechanical checks</span><span>${lt.word_count}${lt.word_limit ? " / " + lt.word_limit : ""} words · grade ${lt.reading_grade}</span></h3>${lintHtml}
-      ${dropped ? html`<p class="empty">${dropped} reviewer claim(s) were dropped because their quotes did not appear in your essay.</p>` : ""}</div>
-    <div class="again"><button class="go inline" id="reviseBtn">Edit and re-score</button></div>`);
+
+    <div class="tabpanel" id="tab-chat" role="tabpanel" aria-labelledby="tabbtn-chat" tabindex="-1" hidden>
+      <section class="chat" id="chat">${chatHtml(r)}</section>
+    </div>
+
+    <div class="tabpanel" id="tab-compare" role="tabpanel" aria-labelledby="tabbtn-compare" tabindex="-1" hidden>
+      ${cal.length ? html`<section class="section"><div class="section-head"><h2>Where it sits</h2><span class="aside">Blind comparisons with essays of known standing, judged in both orders</span></div><ol class="ladder">${rungs}</ol></section>` : ""}
+      ${h2h.length ? html`<section class="section"><div class="section-head"><h2>Head-to-head with similar published essays</h2><span class="aside">Blind, judged in both orders</span></div>${h2hHtml}</section>` : ""}
+      ${moreSimilar.length ? html`<section class="section"><div class="section-head"><h2>More similar essays worth reading</h2></div><ul class="issues">${moreSimilar}</ul></section>` : ""}
+      ${nCompare || moreSimilar.length ? "" : html`<p class="empty">No comparisons ran for this review, so the score is rubric-only.</p>`}
+    </div>`);
   initChat(r);
-  window.scrollTo({ top: 0 });
+  show("report");
+  selectTab("feedback", { instant: true });
+  countUp($("#scoreNum"), Math.round(r.score));
+  const p = revising.get(key(r));
+  if (p) { setTabState("rewrite", "busy"); paintRevising(p); }
+  const c = chatting.get(key(r));
+  if (c) c.paint();
+  if (unsent.has(key(r))) {
+    if (!$("#chatInput").value) $("#chatInput").value = unsent.get(key(r));
+    unsent.delete(key(r));
+  }
 }
+
+function toggleCat(head) {
+  const row = head.closest(".cat"), open = !row.classList.contains("open");
+  row.classList.toggle("open", open);
+  head.setAttribute("aria-expanded", String(open));
+}
+
+function copyText(btn, text) {
+  const label = btn.querySelector(".label");
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject(new Error("no clipboard"))).then(() => {
+    toast(`Copied ${words(text)} words.`);
+    if (!label) return;
+    clearTimeout(btn._reset);
+    label.textContent = "Copied";
+    btn._reset = setTimeout(() => { label.textContent = btn.dataset.label || "Copy"; }, 1600);
+  }, () => toast("Couldn't copy. Select the text in the essay and copy it yourself."));
+}
+
+// ---- history -------------------------------------------------------------------
+function when(s) {
+  const d = new Date(s);
+  return isNaN(d) ? String(s || "") : d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+function closeDrawer() {
+  const dlg = $("#history");
+  if (!dlg.open) return Promise.resolve();
+  if (reduceMotion()) { dlg.close(); return Promise.resolve(); }
+  return new Promise(res => {
+    let done = false;
+    const finish = () => { if (done) return; done = true; dlg.classList.remove("closing"); dlg.close(); res(); };
+    dlg.classList.add("closing");
+    dlg.addEventListener("animationend", finish, { once: true });
+    setTimeout(finish, 320);
+  });
+}
+async function loadHistory() {
+  mount($("#histMsg"), html``);
+  mount($("#histList"), html`<div class="skel"></div><div class="skel"></div><div class="skel"></div>`);
+  try {
+    const resp = await fetch("/api/history"), items = await resp.json();
+    if (!resp.ok || !Array.isArray(items)) throw new Error((items && items.error) || `server returned ${resp.status}`);
+    mount($("#histList"), items.length ? html`<ul class="hist">${items.map(it => html`<li><button type="button" class="row" data-id="${it.id}" aria-current="${String(!!current && current.id === it.id)}">
+        <span class="hist-score">${Math.round(it.score)}</span>
+        <span><span class="hist-line">${it.first_line}</span><span class="hist-meta">${when(it.created)} · ${it.band}</span></span>
+        ${current && current.id === it.id ? html`<span class="chip chip-neutral">Open</span>` : ""}</button></li>`)}</ul>`
+      : html`<p class="empty">No reviews yet. Reviews you run are saved here.</p>`);
+    const first = $('#histList .row[aria-current="true"]') || $("#histList .row");
+    if (first) first.focus();
+  } catch (err) {
+    mount($("#histList"), html`<div class="notice notice-error" role="alert">${icon("alert")}<div>Couldn't load past reviews. ${errText(err)}
+      <div class="notice-actions"><button type="button" class="btn btn-secondary btn-sm" id="histRetry">Try again</button></div></div></div>`);
+  }
+}
+async function openSaved(row) {
+  if (row.getAttribute("aria-busy") === "true") return;
+  row.setAttribute("aria-busy", "true");
+  mount($("#histMsg"), html``);
+  try {
+    const resp = await fetch("/api/history/" + encodeURIComponent(row.dataset.id)), r = await resp.json();
+    if (!resp.ok) throw new Error(r.error || `server returned ${resp.status}`);
+    await closeDrawer();
+    const prev = current;
+    try { render(r); } catch (err) {
+      // A malformed saved review must not leave half a report on screen.
+      row.removeAttribute("aria-busy");
+      current = prev;
+      if (prev) render(prev); else show("compose");
+      toast(`Couldn't show that saved review because its file is missing data (${err.message}).`);
+    }
+  } catch (err) {
+    row.removeAttribute("aria-busy");
+    mount($("#histMsg"), html`<div class="notice notice-error" role="alert">${icon("alert")}<div>Couldn't open that review. ${errText(err)}</div></div>`);
+  }
+}
+$("#histBtn").onclick = () => {
+  const dlg = $("#history");
+  if (dlg.open) { closeDrawer(); return; }
+  dlg.classList.remove("closing");
+  dlg.showModal();
+  moveToasts($("#toasts"), $("#drawerToasts"));
+  $("#histBtn").setAttribute("aria-expanded", "true");
+  loadHistory();
+};
+// A toast with an action stays reachable: it moves into the modal drawer while that is open, and back out after.
+function moveToasts(from, to) {
+  to.append(...[...from.children].filter(t => t.querySelector(".toast-btn") && !t.classList.contains("out")));
+  while (to.children.length > 3) to.firstElementChild.remove();
+}
+$("#histClose").onclick = () => closeDrawer();
+$("#history").addEventListener("cancel", e => { e.preventDefault(); closeDrawer(); });
+$("#history").addEventListener("click", e => { if (e.target === $("#history")) closeDrawer(); });
+$("#history").addEventListener("close", () => { $("#histBtn").setAttribute("aria-expanded", "false"); moveToasts($("#drawerToasts"), $("#toasts")); });
 
 // Delegated handlers survive re-renders and keep inline JS out of templates.
 document.addEventListener("click", e => {
-  const cat = e.target.closest(".cat"); if (cat) cat.classList.toggle("open");
-  const mark = e.target.closest(".ed"); if (mark) activate(mark.dataset.i, "card");
-  const card = e.target.closest(".edit"); if (card) activate(card.dataset.i, "essay");
-  if (e.target.closest("#reviseBtn")) show("compose");
-  if (e.target.closest("#betterBtn")) startRevision();
-  const view = e.target.closest("[data-view]");
+  const t = e.target instanceof Element ? e.target : null;
+  if (!t) return;
+  const tb = t.closest("#report .tab"); if (tb) selectTab(tb.dataset.tab);
+  const goto = t.closest("[data-goto]"); if (goto) selectTab(goto.dataset.goto, { focus: true });
+  const head = t.closest(".cat-head"); if (head) toggleCat(head);
+  const mark = t.closest(".ed"); if (mark) activate(mark.dataset.i, "card");
+  const card = t.closest(".edit"); if (card) activate(card.dataset.i, "essay");
+  if (t.closest("#reviseBtn") && current) loadIntoCompose(current.essay, "the reviewed essay", current.meta);
+  if (t.closest("#betterBtn")) startRevision();
+  const view = t.closest("[data-view]");
   if (view && current && current.revision) {
     const v = current.revision;
     mount($("#draftView"), view.dataset.view === "clean" ? html`${withAsks(v.draft)}` : html`${diffHtml(v.diff)}`);
-    view.parentElement.querySelectorAll("[data-view]").forEach(b => b.classList.toggle("on", b === view));
+    view.parentElement.querySelectorAll("[data-view]").forEach(b => { b.classList.toggle("on", b === view); b.setAttribute("aria-pressed", String(b === view)); });
   }
-  const copy = e.target.closest("#copyDraft");
-  if (copy && current && current.revision) {
-    navigator.clipboard.writeText(current.revision.draft).then(() => { copy.textContent = "Copied"; },
-      () => { copy.textContent = "Copy failed; use Clean draft and select the text"; });
-  }
-  if (e.target.closest("#editDraft") && current && current.revision) {
-    $("#essay").value = current.revision.draft;
-    try { localStorage.setItem("ga-draft", current.revision.draft); } catch (err) {}
-    updateCount();
-    show("compose");
-    window.scrollTo({ top: 0 });
-  }
-  if (e.target.closest("#chatSend")) sendChat($("#chatInput").value);
-  const chip = e.target.closest("[data-say]"); if (chip) sendChat(chip.dataset.say, chip.dataset.advice);
-  const act = e.target.closest("[data-act]");
+  const copy = t.closest("#copyDraft");
+  if (copy && current && current.revision) copyText(copy, current.revision.draft);
+  if (t.closest("#editDraft") && current && current.revision) loadIntoCompose(current.revision.draft, "the edited essay", current.meta);
+  if (t.closest("#chatSend")) sendChat($("#chatInput").value, "", true);
+  const chip = t.closest("[data-say]"); if (chip) sendChat(chip.dataset.say, chip.dataset.advice);
+  const act = t.closest("[data-act]");
   const turn = act && current && (current.chat || [])[+act.dataset.turn];
   if (turn && act.dataset.act === "diff") showWorking($("#chatDraft").dataset.turn === act.dataset.turn ? null : +act.dataset.turn);
-  if (turn && act.dataset.act === "use" && chatBusy !== key(current) && turn.draft !== working()) {
-    versions.push(turn.draft); saveWorking(current); showWorking();
+  if (turn && act.dataset.act === "use" && !chatting.has(key(current)) && turn.draft !== working()) {
+    versions.push(turn.draft); saveWorking(current); showWorking(); keepChatFocus(act);
+    toast(`Your working essay is now version ${versions.length}.`);
   }
-  if (e.target.closest("#chatUndo") && versions.length > 1 && chatBusy !== key(current)) {
-    versions.pop(); saveWorking(current); showWorking();
+  const undo = t.closest("#chatUndo");
+  if (undo && versions.length > 1 && !chatting.has(key(current))) {
+    versions.pop(); saveWorking(current); showWorking(); keepChatFocus(undo);
+    toast(versions.length > 1 ? `Back to version ${versions.length}.` : "Back to the starting essay.");
   }
-  const chatCopy = e.target.closest("#chatCopy");
-  if (chatCopy) {
-    navigator.clipboard.writeText(working()).then(() => { chatCopy.textContent = "Copied"; },
-      () => { chatCopy.textContent = "Copy failed; select the text instead"; });
-  }
-  if (e.target.closest("#chatRescore")) {
-    $("#essay").value = working();
-    try { localStorage.setItem("ga-draft", working()); } catch (err) {}
-    updateCount();
-    show("compose");
-    window.scrollTo({ top: 0 });
-  }
-  const row = e.target.closest("#history .row");
-  if (row) {
-    $("#history").style.display = "none";
-    fetch("/api/history/" + encodeURIComponent(row.dataset.id)).then(r => r.json()).then(render).catch(err => showError(String(err)));
-  }
+  const chatCopy = t.closest("#chatCopy");
+  if (chatCopy) copyText(chatCopy, working());
+  if (t.closest("#chatRescore") && current) loadIntoCompose(working(), "the working essay", current.meta);
+  const row = t.closest("#history .row"); if (row) openSaved(row);
+  if (t.closest("#histRetry")) loadHistory();
+  if (t.closest("#retryBtn")) $("#go").click();
 });
 
 document.addEventListener("keydown", e => {
-  if (e.target.id === "chatInput" && e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) {
+  const t = e.target instanceof Element ? e.target : null;
+  if (t && t.id === "chatInput" && e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) {
     e.preventDefault();
-    sendChat(e.target.value);
+    sendChat(t.value, "", true);
+    return;
+  }
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && view === "compose" && !$("#history").open) {
+    e.preventDefault();
+    if (!$("#go").disabled) $("#go").click();
+    return;
+  }
+  const tb = t && t.closest("#report .tab");
+  if (tb && ["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) {
+    const all = [...document.querySelectorAll("#report .tab")];
+    let i = all.indexOf(tb);
+    i = e.key === "Home" ? 0 : e.key === "End" ? all.length - 1 : (i + (e.key === "ArrowRight" ? 1 : -1) + all.length) % all.length;
+    e.preventDefault();
+    selectTab(all[i].dataset.tab, { focus: true });
   }
 });
 
-$("#histBtn").onclick = async () => {
-  const box = $("#history");
-  if (box.style.display === "block") { box.style.display = "none"; return; }
-  const items = await (await fetch("/api/history")).json();
-  mount(box, html`<h3>Past reviews</h3>${items.length ? items.map(it => html`<div class="row" data-id="${it.id}"><b>${Math.round(it.score)}</b><div>${it.first_line}<br><span class="meta">${it.created} · ${it.band}</span></div></div>`) : html`<p class="empty">No reviews yet.</p>`}`);
-  box.style.display = "block";
-};
+// One-shot entrance classes come off when their animation ends, so hiding and showing a tab never replays them.
+document.addEventListener("animationend", e => { if (e.target instanceof Element) e.target.classList.remove("enter", "once"); });
+let resizeFrame = 0;
+window.addEventListener("resize", () => { cancelAnimationFrame(resizeFrame); resizeFrame = requestAnimationFrame(() => { grow(); moveInd(true); }); });
+
+// ---- start -----------------------------------------------------------------------
+applyTheme(theme);
+setType("personal");
+try {
+  const d = localStorage.getItem("ga-draft");
+  if (d) { $("#essay").value = d; if (d.trim()) setNote("Restored your last draft.", "Clear it", clearDraft); }
+} catch (e) {}
+updateCount();
+grow();
+const isMac = /Mac|iPhone|iPad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "");
+$("#goKbd").textContent = isMac ? "⌘ Enter" : "Ctrl Enter";
+$("#go").setAttribute("aria-keyshortcuts", isMac ? "Meta+Enter" : "Control+Enter");
+if (document.fonts) document.fonts.ready.then(() => { grow(); moveInd(true); });
 </script>
 </body>
 </html>
