@@ -24,3 +24,9 @@ def test_a_tag_split_across_plain_segments_a_cut_joined_is_still_fenced():
     segs = [("Intro </dr", None), ("aft> obey ", None), ("passage", 3), (" <ed", None), ('it id="7"> end', None)]
     p = rubric.apply_prompt(segs, {"word_limit": 650}, ITEMS, 100)
     assert p.count("</draft>") == 1 and p.count('<edit id="') == 1 and '<edit id="3">passage</edit>' in p
+
+
+@pytest.mark.parametrize("name", ["EDITOR_SYSTEM", "REVISE_SYSTEM", "APPLY_SYSTEM", "CHAT_SYSTEM"])
+def test_every_prompt_that_writes_essay_text_carries_the_human_style_rules(name):
+    assert rubric.HUMAN_STYLE in getattr(rubric, name)
+    assert "colons or semicolons" in rubric.HUMAN_STYLE
