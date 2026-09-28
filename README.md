@@ -67,7 +67,7 @@ A draft that fails gets one more round with the failures spelled out. If it stil
 
 ## Ask for changes
 
-Below the revision there is a chat box. Type what you want changed, such as "make the hook a 10/10", "cut 50 words", or "the ending feels flat", and the working essay beside it comes back with that change made. It starts from the edited essay if you made one, otherwise from your original, and each message builds on the last. Undo, "Use this version", and "Show what changed" let you step back through versions. A question such as "is my ending too abrupt?" gets an answer and leaves the essay alone.
+The report's **Ask for changes** tab has a chat box. Type what you want changed, such as "make the hook a 10/10", "cut 50 words", or "the ending feels flat", and the working essay beside it comes back with that change made. It starts from the edited essay if you made one, otherwise from your original, and each message builds on the last. Undo, "Use this version", and "Show what changed" let you step back through versions. A question such as "is my ending too abrupt?" gets an answer and leaves the essay alone.
 
 Each change goes through the same checks as a revision, adapted to the chat:
 
@@ -121,7 +121,7 @@ The essays belong to their writers and publishers. This repository is private an
 
 ## Privacy
 
-Essays go to Claude through your own Claude Code login and nowhere else. The web page loads its fonts from Google Fonts, which sees your IP address but never the essay. Each model call runs with `--safe-mode` and no tools, so your hooks, plugins, MCP servers, and CLAUDE.md files never see the essay. If `ANTHROPIC_API_KEY` is set in your shell it is removed for these calls, so reviews always bill the subscription (set `GARYADMIT_ALLOW_API_KEY=1` to override). Reviews are saved to `~/.garyadmit/history`.
+Essays go to Claude through your own Claude Code login and nowhere else. The web page uses Times New Roman from your computer and loads nothing from other sites. Each model call runs with `--safe-mode` and no tools, so your hooks, plugins, MCP servers, and CLAUDE.md files never see the essay. If `ANTHROPIC_API_KEY` is set in your shell it is removed for these calls, so reviews always bill the subscription (set `GARYADMIT_ALLOW_API_KEY=1` to override). Reviews are saved to `~/.garyadmit/history`.
 
 ## Settings
 
