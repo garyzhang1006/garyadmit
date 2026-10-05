@@ -1,0 +1,55 @@
+name: Scoring bench
+
+# The bench runs here, not on the laptop. Model calls bill the Claude subscription through
+# CLAUDE_CODE_OAUTH_TOKEN (made by `claude setup-token`), never an API key.
+# Trigger: `gh workflow run bench.yml -f full=true`, then download the bench-results artifact.
+on:
+  workflow_dispatch:
+    inputs:
+      full:
+        description: "Full pipeline with comparisons (several times the calls)"
+        type: boolean
+        default: true
+      seed:
+        description: "Sample seed (blank for the default sample)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      FULL: ${{ inputs.full }}
+      SEED: ${{ inputs.seed }}
+    steps:
+      - name: Refuse to run on API billing
+        run: |
+          if [ -n "${ANTHROPIC_API_KEY:-}" ]; then echo "ANTHROPIC_API_KEY is set; this bench must bill the subscription only." >&2; exit 1; fi
+          if [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then echo "Add the CLAUDE_CODE_OAUTH_TOKEN secret (from claude setup-token) first." >&2; exit 1; fi
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      # Same CLI version as the laptop, so llm.py's flags (--safe-mode, --json-schema) behave the same.
+      - run: npm install -g @anthropic-ai/claude-code@2.1.289
+      - run: pip install -e .
+      - name: Run bench
+        run: |
+          args=()
+          if [ "$FULL" = "true" ]; then args+=(--full); fi
+          if [ -n "$SEED" ]; then args+=(--seed "$SEED"); fi
+          python -m garyadmit bench "${args[@]}"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: bench-results
+          path: ~/.garyadmit/bench/
+          if-no-files-found: warn
