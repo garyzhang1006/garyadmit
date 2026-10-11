@@ -26,6 +26,11 @@ GRADE_LEVEL = {
 }
 
 
+# Hosts that rate-limit harder than robots.txt says. The Wayback Machine throttles at
+# roughly 15 requests a minute and answers with 429 or dropped connections past that.
+HOST_DELAY = {"web.archive.org": 5.0}
+
+
 class Fetcher:
     """GET with a per-host delay (at least robots.txt Crawl-delay), robots.txt check, retries, and an in-memory cache."""
 
@@ -59,7 +64,7 @@ class Fetcher:
         host = urlparse(url).netloc
         rp = self._robots.get(urlparse(url).scheme + "://" + host)
         # Honor a site's Crawl-delay when it asks for more than our default (Hamilton asks for 5s).
-        delay = max(self.delay, float((rp.crawl_delay(UA) if rp else None) or 0))
+        delay = max(self.delay, HOST_DELAY.get(host, 0), float((rp.crawl_delay(UA) if rp else None) or 0))
         wait = self._last.get(host, 0) + delay - time.time()
         if wait > 0:
             time.sleep(wait)
@@ -83,7 +88,8 @@ class Fetcher:
                     break
             except requests.RequestException as e:
                 err = str(e)
-            time.sleep(2 * (attempt + 1))
+            # A 429 from the Wayback Machine needs a long pause before it serves again.
+            time.sleep(60 if err == "HTTP 429" else 2 * (attempt + 1))
         raise RuntimeError(f"GET {url} failed: {err}")
 
 

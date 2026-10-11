@@ -78,8 +78,8 @@ def scrape(fetch, limit=None):
             text = clean("\n\n".join(_paragraphs(e["html"])))
             yield {
                 "source": "essaysthatworked", "url": f"{BASE}/{e.get('page') or page}",
-                "tier": "admitted" if schools else "example", "title": e.get("title", ""),
+                "tier": "admitted" if schools else "example", "title": _text(e.get("title") or ""),
                 "school": schools[0].get("preferredName", "") if schools else "",
-                "essay_type": TYPES.get(e.get("type", ""), "supplement"), "prompt": e.get("prompt") or "",
+                "essay_type": TYPES.get(e.get("type", ""), "supplement"), "prompt": _text(e.get("prompt") or ""),
                 "text": text,
             }

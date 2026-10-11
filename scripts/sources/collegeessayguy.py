@@ -9,6 +9,7 @@ index. Essays sit either in a <blockquote> or as plain paragraphs under an
 from __future__ import annotations
 
 import re
+import sys
 
 from ._common import paras_text, soup, words
 
@@ -102,7 +103,8 @@ def scrape(fetch, limit=None):
             break
         try:
             s = soup(fetch(WAYBACK + slug))
-        except (RuntimeError, PermissionError):
+        except (RuntimeError, PermissionError) as err:
+            print(f"  [collegeessayguy] skipped {slug}: {err}", file=sys.stderr)
             continue
         n += 1
         supp = bool(re.search(r"supplement|why-us|community|extracurricular|uc-essay|identity|coalition|questbridge",

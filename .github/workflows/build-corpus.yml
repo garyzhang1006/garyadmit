@@ -22,7 +22,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -58,3 +58,9 @@ jobs:
             git commit -m "Rebuild essay corpus"
             git push
           fi
+      - name: Upload corpus for inspection
+        if: ${{ !inputs.commit }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: corpus
+          path: corpus/
