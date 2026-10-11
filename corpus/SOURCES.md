@@ -1,27 +1,27 @@
 # Corpus sources
 
-600 published essays, 1116 hidden calibration anchors.
+799 published essays, 1116 hidden calibration anchors.
 
 | source | status | scraped | kept |
 |---|---|---|---|
-| jhu | ok | 61 | 61 |
-| connecticut | ok | 9 | 9 |
-| hamilton | ok | 38 | 38 |
-| tufts | ok | 78 | 77 |
-| emory | ok | 26 | 26 |
-| st_johns | ok | 41 | 38 |
-| etwc | ok | 68 | 50 |
-| harvard_crimson | ok | 67 | 65 |
-| shemmassian | ok | 14 | 14 |
-| collegevine | ok | 60 | 44 |
-| the_tech | ok | 25 | 25 |
-| prepscholar | ok | 4 | 3 |
-| admitreport | ok | 44 | 44 |
-| studynotes | ok | 113 | 106 |
-| elevated | ok | 1116 | 1116 |
+| jhu | kept from last build | 61 | 61 |
+| connecticut | kept from last build | 9 | 9 |
+| hamilton | kept from last build | 38 | 38 |
+| tufts | kept from last build | 77 | 77 |
+| emory | kept from last build | 26 | 26 |
+| st_johns | kept from last build | 38 | 38 |
+| etwc | kept from last build | 50 | 50 |
+| harvard_crimson | kept from last build | 65 | 65 |
+| shemmassian | kept from last build | 14 | 14 |
+| collegevine | kept from last build | 44 | 44 |
+| the_tech | kept from last build | 25 | 25 |
+| prepscholar | kept from last build | 3 | 3 |
+| admitreport | kept from last build | 44 | 44 |
+| studynotes | kept from last build | 106 | 106 |
+| essaysthatworked | ok | 295 | 199 |
 
-By tier: admitted 249, exemplar 226, example 115, weak 10
+By tier: admitted 447, exemplar 226, example 116, weak 10
 
-By type: personal 376, supplement 224
+By type: personal 426, supplement 373
 
-Top schools: Tufts 79, Harvard 69, Johns Hopkins 63, Hamilton 38, St. John's College 38, MIT 27, Stanford 27, Emory 26, Connecticut College 23, UPenn 6, University of California 5, Yale 4, Duke 4, Harvard University 3, Georgia Tech 3, Northwestern 3, Cornell 3, Columbia 3, Caltech 3, NYU 2, Boston University 2, Dartmouth 2, Rice 2, UCLA 2, Princeton 2
+Top schools: Tufts 79, Harvard 69, Johns Hopkins 68, Hamilton 38, St. John's College 38, UC Berkeley 38, MIT 31, University of Michigan 31, Stanford 27, Emory 26, Connecticut College 23, UNC at Chapel Hill 14, Stanford University 10, Northwestern University 10, Brown University 9, Duke University 7, UPenn 6, University of Southern California 6, Carnegie Mellon 6, Columbia University 6, Cornell University 5, University of California 5, Notre Dame 5, Princeton University 5, Dartmouth College 5
