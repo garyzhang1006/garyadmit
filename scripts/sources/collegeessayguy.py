@@ -1,15 +1,19 @@
 """College Essay Guy: personal statement and supplemental essay examples from its blog.
 
 The live site answers scrapers with a Cloudflare challenge, so pages are read from
-their Wayback Machine copies. The list of example pages comes from the Wayback CDX
-index. Essays sit either in a <blockquote> or as plain paragraphs under an
-"... Essay Example" heading, followed by the site's commentary.
+their Wayback Machine copies. The Wayback Machine answers GitHub runners with HTTP 429,
+so those copies are fetched once from a normal connection into cache/collegeessayguy/
+(gzipped) and parsed from there; without a cache the pages are fetched and listed via CDX.
+Essays sit either in a <blockquote> or as plain paragraphs under an "... Essay Example"
+heading, followed by the site's commentary.
 """
 
 from __future__ import annotations
 
+import gzip
 import re
 import sys
+from pathlib import Path
 
 from ._common import paras_text, soup, words
 
@@ -17,6 +21,7 @@ CDX = ("https://web.archive.org/cdx/search/cdx?url=collegeessayguy.com/blog/*&co
        "&fl=original&filter=statuscode:200&from=2023")
 LIVE = "https://www.collegeessayguy.com/blog/"
 WAYBACK = "https://web.archive.org/web/2026id_/" + LIVE
+CACHE = Path(__file__).resolve().parent / "cache" / "collegeessayguy"
 
 # Slugs of pages that publish whole college essays. Law school, grad school, UCAS,
 # scholarship, and transfer pages are left out because they are other genres.
@@ -98,11 +103,15 @@ def _from_headings(s):
 
 def scrape(fetch, limit=None):
     n = 0
-    for slug in _slugs(fetch):
+    cached = sorted(p.name[: -len(".html.gz")] for p in CACHE.glob("*.html.gz"))
+    for slug in cached or _slugs(fetch):
         if limit is not None and n >= limit:
             break
         try:
-            s = soup(fetch(WAYBACK + slug))
+            if cached:
+                s = soup(gzip.decompress((CACHE / f"{slug}.html.gz").read_bytes()).decode("utf-8", "replace"))
+            else:
+                s = soup(fetch(WAYBACK + slug))
         except (RuntimeError, PermissionError) as err:
             print(f"  [collegeessayguy] skipped {slug}: {err}", file=sys.stderr)
             continue
