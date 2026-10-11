@@ -1,6 +1,6 @@
 # Corpus sources
 
-799 published essays, 1116 hidden calibration anchors.
+1155 published essays, 1116 hidden calibration anchors.
 
 | source | status | scraped | kept |
 |---|---|---|---|
@@ -18,10 +18,11 @@
 | prepscholar | kept from last build | 3 | 3 |
 | admitreport | kept from last build | 44 | 44 |
 | studynotes | kept from last build | 106 | 106 |
-| essaysthatworked | ok | 295 | 199 |
+| essaysthatworked | kept from last build | 199 | 199 |
+| collegeessayguy | ok | 461 | 356 |
 
-By tier: admitted 447, exemplar 226, example 116, weak 10
+By tier: example 472, admitted 447, exemplar 226, weak 10
 
-By type: personal 426, supplement 373
+By type: supplement 685, personal 470
 
 Top schools: Tufts 79, Harvard 69, Johns Hopkins 68, Hamilton 38, St. John's College 38, UC Berkeley 38, MIT 31, University of Michigan 31, Stanford 27, Emory 26, Connecticut College 23, UNC at Chapel Hill 14, Stanford University 10, Northwestern University 10, Brown University 9, Duke University 7, UPenn 6, University of Southern California 6, Carnegie Mellon 6, Columbia University 6, Cornell University 5, University of California 5, Notre Dame 5, Princeton University 5, Dartmouth College 5
