@@ -40,9 +40,26 @@ EXAMPLE_HEAD = re.compile(r"example\s*(#\s*\d+|:)|essay example|example essay|^\
 NOT_EXAMPLE = re.compile(r"^\s*(how|what|why|where|when|tips|more|want|in-depth|analysis)\b", re.I)
 COMMENTARY = re.compile(r"^\s*(tips|analysis|what i love|why (this|it) works|here'?s why|notes?\b|commentary|"
                         r"takeaways?|ethan'?s|what makes|what this essay|key takeaways)", re.I)
-PREFACE = re.compile(r"written for|prompt|essay (was )?written|word count|this essay|by .{0,40}(admitted|accepted)",
-                     re.I)
+PREFACE = re.compile(r"written for|prompt|essay (was )?written|word count|this essay|by .{0,40}(admitted|accepted)|"
+                     r"\b(montage|narrative) (essay|structure)", re.I)
+# Many pages quote the prompt in a blockquote too. Prompts open with an instruction or
+# address the reader as "you"; essays are written in the first person.
+PROMPT_OPEN = re.compile(r"^\s*(reflect|describe|tell us|discuss|share|explain|please|briefly|elaborate|respond|"
+                         r"choose|select|pick|consider|think about|imagine|using|in \d+ words|answer)\b", re.I)
 MIN_WORDS = 100
+
+
+def _is_prompt(text: str) -> bool:
+    you = len(re.findall(r"\b(you|your|yours)\b", text, re.I))
+    me = len(re.findall(r"\b(I|my|me|mine)\b", text))
+    # A letter to a future roommate says "you" a lot too, but it also says "I".
+    return bool(PROMPT_OPEN.match(text)) or (you > me and me <= 3)
+
+
+def _tidy(text: str) -> str:
+    """Drop the word-count notes and dash separators the site puts after an essay."""
+    text = re.sub(r"\s*\(\d+ words?\)", "", text)
+    return re.sub(r"(\n\n[\s—–-]+)+$", "", text).strip()
 
 
 def _slugs(fetch) -> list[str]:
@@ -120,9 +137,12 @@ def scrape(fetch, limit=None):
                               slug))
         seen = set()
         for title, text in [*_from_blockquotes(s), *_from_headings(s)]:
-            if text[:200] in seen:
+            text = _tidy(text)
+            if text[:200] in seen or words(text) < MIN_WORDS or _is_prompt(text):
                 continue
             seen.add(text[:200])
+            if not title or COMMENTARY.match(title):  # the nearest heading belongs to the previous essay's notes
+                title = slug.replace("-", " ").capitalize()
             yield {
                 "source": "collegeessayguy", "url": LIVE + slug, "tier": "example", "title": title,
                 "essay_type": "supplement" if supp or words(text) < 400 else "personal", "text": text,
