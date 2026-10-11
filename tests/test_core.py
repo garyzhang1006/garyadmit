@@ -262,6 +262,25 @@ def test_review_pipeline_end_to_end(fake):
     assert 0 <= r["score"] <= 100 and r["band"]
 
 
+def test_third_reader_is_blind(fake):
+    from garyadmit.review import review
+    seen = []
+
+    def spy(system, prompt, schema, model, effort):
+        if set(schema["properties"]) <= set(rubric.CATEGORIES):
+            seen.append(system + prompt)
+        return fake(system, prompt, schema, model, effort)
+
+    llm.set_backend(spy)
+    r = review(ESSAY, n_compare=0, n_anchor=0, line_edits=False)
+    assert len(seen) == 1
+    # The third reader gets the essay and the categories to score, never the first two readers' scores or reasons.
+    assert ESSAY[:40] in seen[0] and "voice" in seen[0]
+    assert not any(s in seen[0] for s in ("reader_1", "reader_2", '"score"', "disagree"))
+    # Median of the 7, 3, and blind 4.
+    assert r["categories"]["voice"]["reader_3"] == 4 and r["categories"]["voice"]["score"] == 4
+
+
 def test_calibration_losses_pull_score_down(fake):
     from garyadmit.review import review
     fake.prefer_opponent = True

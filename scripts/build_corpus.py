@@ -30,7 +30,7 @@ from sources._common import Fetcher, make_record  # noqa: E402
 SOURCES = [
     "jhu", "connecticut", "hamilton", "tufts", "emory", "st_johns", "etwc",
     "harvard_crimson", "shemmassian", "collegevine", "the_tech", "prepscholar",
-    "admitreport", "studynotes",
+    "admitreport", "studynotes", "essaysthatworked", "collegeessayguy",
 ]
 ANCHOR_SOURCES = ["elevated"]
 
@@ -66,6 +66,8 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=None, help="max essay pages per source (smoke test)")
     ap.add_argument("--out", default=str(ROOT / "corpus"))
     ap.add_argument("--delay", type=float, default=1.0)
+    ap.add_argument("--keep-others", action="store_true",
+                    help="with --only, keep the existing essays from every other source instead of dropping them")
     a = ap.parse_args()
 
     only = [s for s in a.only.split(",") if s]
@@ -74,6 +76,16 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=True)
 
     status, essays, seen = {}, [], set()
+    if only and a.keep_others and (out / "essays.jsonl").exists():
+        kept = Counter()
+        for line in (out / "essays.jsonl").read_text(encoding="utf-8").splitlines():
+            r = json.loads(line)
+            if r["source"] in only:
+                continue
+            seen.add(norm_key(r["text"]))
+            essays.append(r)
+            kept[r["source"]] += 1
+        status.update({k: ("kept from last build", v, v) for k, v in kept.items()})
     for name in SOURCES:
         if only and name not in only:
             continue
@@ -122,7 +134,10 @@ def main() -> int:
     for r in essays:
         if r["school"]:
             schools[r["school"]] += 1
-    lines = ["# Corpus sources", "", f"{len(essays)} published essays, {len(anchors)} hidden calibration anchors.", "",
+    n_anchors = len(anchors)
+    if not n_anchors and (out / "anchors.jsonl").exists():  # anchors were not rebuilt this run
+        n_anchors = len((out / "anchors.jsonl").read_text(encoding="utf-8").splitlines())
+    lines =["# Corpus sources", "", f"{len(essays)} published essays, {n_anchors} hidden calibration anchors.", "",
              "| source | status | scraped | kept |", "|---|---|---|---|"]
     lines += [f"| {k} | {v[0]} | {v[1]} | {v[2]} |" for k, v in status.items()]
     lines += ["", "By tier: " + ", ".join(f"{k} {v}" for k, v in by_tier.most_common()),

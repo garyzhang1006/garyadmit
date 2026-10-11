@@ -4,6 +4,17 @@ name: Build corpus
 # `gh workflow run build-corpus.yml`, then `git pull` to get corpus/.
 on:
   workflow_dispatch:
+    inputs:
+      only:
+        description: "Comma-separated sources to rebuild; the rest are kept from the last build. Empty rebuilds all."
+        default: ""
+      limit:
+        description: "Max pages per source (smoke test). Empty means no limit."
+        default: ""
+      commit:
+        description: "Commit the result"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -18,8 +29,25 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install requests beautifulsoup4 lxml
-      - run: python scripts/build_corpus.py
+      - run: |
+          args=()
+          if [ -n "$ONLY" ]; then args+=(--only "$ONLY" --keep-others); fi
+          if [ -n "$LIMIT" ]; then args+=(--limit "$LIMIT"); fi
+          python scripts/build_corpus.py "${args[@]}"
+        env:
+          ONLY: ${{ inputs.only }}
+          LIMIT: ${{ inputs.limit }}
+      - name: Sample new records
+        if: ${{ inputs.only != '' }}
+        run: |
+          for s in ${ONLY//,/ }; do
+            grep "\"source\": \"$s\"" corpus/essays.jsonl | head -3 | cut -c1-1500 || true
+            echo "$s: $(grep -c "\"source\": \"$s\"" corpus/essays.jsonl || true) records"
+          done
+        env:
+          ONLY: ${{ inputs.only }}
       - name: Commit corpus
+        if: ${{ inputs.commit }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

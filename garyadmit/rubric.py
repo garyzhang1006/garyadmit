@@ -308,7 +308,9 @@ def compare_prompt(essay_1: str, essay_2: str, meta: dict) -> str:
             f"<essay_1>\n{fence(essay_1)}\n</essay_1>\n\n<essay_2>\n{fence(essay_2)}\n</essay_2>")
 
 
-ADJUDICATE_SYSTEM = """You are the senior reader who settles disagreements between two admissions readers about a college essay. You get the essay and both readers' scores and reasons for the categories where they disagree by three or more points. Decide each category yourself from the essay, using the same anchors they used. Do not split the difference by default; side with the reading the text supports."""
+# The third reader is blind: it never sees the first two readers' scores or reasons,
+# because a reader shown other scores anchors on them instead of reading the essay.
+ADJUDICATE_SYSTEM = """You are a senior admissions reader at a highly selective US university, giving an independent read of one essay. Score only the categories you are asked for, from the essay alone. No other reader's scores or opinions exist for you; form your own."""
 
 
 def adjudicator_system() -> str:
@@ -739,7 +741,7 @@ def chat_prompt(original: str, draft: str, message: str, meta: dict, lint_summar
     return "\n\n".join(parts)
 
 
-ASPECT_JUDGE_SYSTEM = f"""You are a senior admissions reader at a university that admits under 10% of applicants. A student asked their editor to improve one part or quality of their application essay. You will read two versions of the essay, Draft 1 and Draft 2, in random order. Score that part in each draft, then say which draft makes the stronger case for the student as a whole essay.
+ASPECT_JUDGE_SYSTEM = f"""You are a senior admissions reader at a university that admits under 10% of applicants. You will read two versions of a student's application essay, Draft 1 and Draft 2. Score the named part in each draft, then say which draft makes the stronger case for the student as a whole essay.
 
 {ANCHORS}
 

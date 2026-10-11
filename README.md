@@ -97,7 +97,7 @@ Language models flatter by default. GaryAdmit counters that in layers.
 
 **Anonymous framing.** The model is told it is scoring an essay from the applicant pool for a calibration read. It never learns that the person asking wrote it, which removes the pull to be encouraging.
 
-**Two readers, adjudicated.** A former admissions officer and a reader-trainer score independently. Any category where they differ by 3 or more goes to a third call that has to pick the reading the text supports.
+**Every reader is blind.** A former admissions officer and a reader-trainer score independently, and no reader or judge ever sees another one's scores. Any category where the two differ by 3 or more goes to a third reader who sees only the essay, and the category takes the median of the three scores.
 
 **Quotes or it didn't happen.** Every strength and weakness has to quote your essay. Quotes that are not in the essay get dropped, and the report says how many were dropped.
 

@@ -1849,7 +1849,7 @@ function render(r) {
         ${icon("chevron")}
       </button>
       <div class="cat-body" id="cat-${c}"><div class="cat-inner"><dl class="cat-detail">
-        ${s.adjudicated ? html`<div><dt>Readers split ${s.reader_1} vs ${s.reader_2}, adjudicated</dt><dd>${s.adjudication_reason}</dd></div>` : ""}
+        ${s.adjudicated ? html`<div><dt>Readers split ${s.reader_1} vs ${s.reader_2}${s.reader_3 != null ? `, a third blind reader gave ${s.reader_3}` : ""}</dt><dd>${s.adjudication_reason}</dd></div>` : ""}
         <div><dt>${readers[0].name}</dt><dd>${s.justification[0]}</dd></div>
         <div><dt>${readers[1].name}</dt><dd>${s.justification[1]}</dd></div>
         ${s.quote ? html`<blockquote class="quote">${s.quote}</blockquote>` : ""}

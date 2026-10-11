@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import re
 import time
@@ -68,6 +69,12 @@ class Fetcher:
                 r = self.s.get(url, timeout=self.timeout)
                 self._last[host] = time.time()
                 if r.status_code == 200:
+                    # Wayback "id_" URLs replay the archived bytes, which can still be gzipped
+                    # without a Content-Encoding header to tell requests to decode them.
+                    if r.content[:2] == b"\x1f\x8b":
+                        text = gzip.decompress(r.content).decode("utf-8", "replace")
+                        self._cache[url] = text
+                        return text
                     r.encoding = r.encoding if r.encoding and r.encoding.lower() != "iso-8859-1" else "utf-8"
                     self._cache[url] = r.text
                     return r.text

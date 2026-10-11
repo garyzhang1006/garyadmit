@@ -1,7 +1,7 @@
 """End-to-end review pipeline.
 
   lint ─┬─ reviewer A (admissions officer) ─┐
-        ├─ reviewer B (editor) ─────────────┼─ adjudicate disputes ─┐
+        ├─ reviewer B (editor) ─────────────┼─ blind reader C on disputes, median ─┐
         ├─ line editor ─────────────────────┤                       ├─ final score + report
         └─ profile → BM25 → rerank → blind head-to-heads (both orders)┘
 
@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import statistics
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from itertools import chain, zip_longest
@@ -228,21 +229,15 @@ def review(
     merged, disputed = scoring.merge_reviewers([rev_a, rev_b])
     adjudication = {}
     if disputed:
-        say(f"Reviewers disagreed on {', '.join(disputed)}; adjudicating")
-        detail = {
-            c: {
-                "reader_1": {"score": rev_a["scores"][c]["score"], "reason": rev_a["scores"][c]["justification"]},
-                "reader_2": {"score": rev_b["scores"][c]["score"], "reason": rev_b["scores"][c]["justification"]},
-            }
-            for c in disputed
-        }
+        say(f"Reviewers disagreed on {', '.join(disputed)}; a third blind reader is scoring them")
         adjudication = llm.ask_json(
             rubric.adjudicator_system(),
-            f"{user_prompt}\n\nDisputed categories:\n{json.dumps(detail, indent=1)}",
+            f"{user_prompt}\n\nScore these categories: {', '.join(disputed)}",
             rubric.adjudicate_schema(disputed), model=model,
         )
         for c in disputed:
-            merged[c] = float(adjudication[c]["score"])
+            merged[c] = float(statistics.median([rev_a["scores"][c]["score"], rev_b["scores"][c]["score"],
+                                                 adjudication[c]["score"]]))
 
     rubric_score = scoring.rubric_overall(merged)
     matches = [(h["opponent"].level, h["outcome"]) for h in h2h if h["outcome"] is not None]
@@ -265,6 +260,7 @@ def review(
                 "reader_1": rev_a["scores"][c]["score"],
                 "reader_2": rev_b["scores"][c]["score"],
                 "adjudicated": c in disputed,
+                "reader_3": adjudication.get(c, {}).get("score"),
                 "adjudication_reason": adjudication.get(c, {}).get("reason", ""),
                 "justification": [rev_a["scores"][c]["justification"], rev_b["scores"][c]["justification"]],
                 "quote": rev_a["scores"][c]["quote"] or rev_b["scores"][c]["quote"],

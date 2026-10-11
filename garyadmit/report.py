@@ -37,7 +37,7 @@ def to_text(r: dict) -> str:
     out.append(f"  {'CATEGORY':<14}{'SCORE':>6}{'R1':>5}{'R2':>5}")
     for c in CATEGORIES:
         cs = r["categories"][c]
-        flag = "  (adjudicated)" if cs["adjudicated"] else ""
+        flag = f"  (third blind reader: {cs.get('reader_3')})" if cs["adjudicated"] else ""
         out.append(f"  {c.title():<14}{cs['score']:>6.1f}{cs['reader_1']:>5}{cs['reader_2']:>5}{flag}")
     out.append("")
 
