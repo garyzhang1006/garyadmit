@@ -76,6 +76,8 @@ def _do_revise(req: dict, progress) -> dict:
         filled = fill_brackets(result, model=model, progress=progress)
     except (llm.LLMError, ValueError) as err:
         filled = {"error": str(err)}
+    except Exception as err:  # the fill is optional, so even a bug in it must not cost the student the revision
+        filled = {"error": f"{type(err).__name__}: {err}"}
     if filled:
         result["filled"] = filled
     if path:

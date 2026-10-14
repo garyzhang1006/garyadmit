@@ -574,3 +574,10 @@ def test_a_fill_that_fails_keeps_the_checked_revision(fake, monkeypatch):
     monkeypatch.setattr(server, "fill_brackets", boom)
     v = server._do_revise({"essay": ESSAY, "word_limit": "650"}, lambda s: None)
     assert v["verified"] and v["filled"] == {"error": "editor timed out"} and "[what she said about the pleats]" in v["draft"]
+
+    def bug(*a, **k):
+        raise KeyError("start")
+
+    monkeypatch.setattr(server, "fill_brackets", bug)
+    v = server._do_revise({"essay": ESSAY, "word_limit": "650"}, lambda s: None)
+    assert v["verified"] and v["filled"] == {"error": "KeyError: 'start'"}

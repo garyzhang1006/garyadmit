@@ -1248,12 +1248,13 @@ function revisionHtml(v) {
   const nq = v.questions.length, f = filledOf(v), mu = f ? f.made_up : [], nmu = detailCount(mu);
   const fillErr = v.filled && !f ? v.filled.error : "", fc = (f && f.checks.fact_check) || {};
   // Brackets still in the essay on screen: all of them without a fill, or the ones the fill couldn't answer.
-  const open = f ? v.questions.filter(q => f.draft.includes(q.placeholder)) : v.questions;
+  // A bracket the student wrote is theirs, so the fill skips it and it is no question.
+  const open = f ? v.questions.filter(q => f.draft.includes(q.placeholder) && !v.essay.includes(q.placeholder)) : v.questions;
   const checked = v.verified
     ? html`<p>A blind judge preferred this revision over your original in both orders${won.length ? `, winning on ${won.join(", ")}` : ""}${lost.length ? ` and losing on ${lost.join(", ")}` : ""}. ${jd.decisive_difference || ""}</p>
         ${v.checks.vs_polish ? html`<p>It also beat a polish-only rewrite of your original in both orders, so the gain is more than smoother sentences.</p>` : ""}
         ${jd.voice_share > 0.5 ? html`<p>The judge also found that the revision sounds more like one specific real teenager.</p>` : ""}
-        ${nq ? html`<p class="hint">${f ? `The judge saw ${nq === 1 ? "a question" : "questions"} where the highlighted details are now, and assumed true answers. This holds once you replace ${nmu === 1 ? "the made-up detail" : "the made-up details"} with what really happened.`
+        ${nq ? html`<p class="hint">${nmu ? `The judge saw ${nq === 1 ? "a question" : "questions"} where the highlighted details are now, and assumed true answers. This holds once you replace ${nmu === 1 ? "the made-up detail" : "the made-up details"} with what really happened.`
           : `This assumes you answer the ${nq} bracketed question${nq > 1 ? "s" : ""} with true details.`}</p>` : ""}`
     : html`<p>These checks failed:</p><ul>${v.checks.failures.map(f => html`<li>${f}</li>`)}</ul>`;
   const d = v.diagnosis, vc = v.voice;
