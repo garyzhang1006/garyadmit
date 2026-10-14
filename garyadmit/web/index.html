@@ -465,7 +465,7 @@ figure.best figcaption { margin-top: var(--s1); padding-left: var(--s4); font-si
 .apply-bar:empty { display: none; }
 #applyCta { display: contents; }
 .tab.enter { animation: fade-up var(--t3) var(--ease); }
-.applied .notice { margin-bottom: var(--s4); }
+.applied .notice, .better > .notice { margin-bottom: var(--s4); }
 mark.madeup { padding: 0 2px; border-radius: 2px; background: var(--amber-soft); color: inherit; -webkit-box-decoration-break: clone; box-decoration-break: clone; text-decoration: underline dotted var(--amber) 1.5px; text-underline-offset: 4px; transition: background-color var(--t1) var(--ease), box-shadow var(--t1) var(--ease); }
 mark.madeup.active { background: var(--mark-active); box-shadow: 0 0 0 2px var(--mark-active); outline: 2px solid var(--amber); outline-offset: 2px; }
 /* Color alone doesn't tell a screen reader; generated text is read aloud but never copied with a selection. */
@@ -1226,14 +1226,18 @@ const ASK = /(\[[^\[\]\n]{3,300}\])/;
 const withAsks = t => String(t || "").split(ASK).map((p, i) => i % 2 ? html`<mark class="ask">${p}</mark>` : p);
 const diffHtml = d => d.segments.map(s => s.op === "equal" ? withAsks(s.text)
   : s.op === "insert" ? html`<ins>${withAsks(s.text)}</ins>` : html`<del>${s.text}</del>`);
+// The revision with its brackets filled in by made-up details; revisions saved before filling existed have none.
+const filledOf = v => v && v.filled && typeof v.filled.draft === "string" ? v.filled : null;
+const shownDraft = v => (filledOf(v) || v).draft;
+const filledView = v => filledOf(v) ? madeUpHtml(filledOf(v), withAsks) : withAsks(v.draft);
 
 function betterIntro(err) {
   return html`<div class="intro">
     <h2>A checked rewrite</h2>
-    <p class="lede">GaryAdmit finds what your essay is really about, rebuilds it around your best material in your own voice, and asks you for the details only you know.</p>
-    <p class="lede">It calls the result better only if a blind judge prefers it in both orders over your original and over a polish-only rewrite of it, and a separate check finds no invented facts or AI-sounding phrases. Claude runs those checks too, so read every line against what happened before you use it.</p>
+    <p class="lede">GaryAdmit finds what your essay is really about and rebuilds it around your best material in your own voice. Where it needs a detail only you know, it writes a stand-in and highlights it for you to replace.</p>
+    <p class="lede">It calls the result better only if a blind judge prefers it in both orders over your original and over a polish-only rewrite of it, and a separate check finds no invented facts or AI-sounding phrases. Those checks run before the stand-ins go in. Claude runs them too, so read every line against what happened before you use it.</p>
     ${err ? html`<div class="notice notice-error" role="alert">${icon("alert")}<div><b>The rewrite didn't finish.</b> ${err}</div></div>` : ""}
-    <div id="betterBody" class="start"><button type="button" class="btn btn-primary btn-lg" id="betterBtn">Make it a lot better</button><span class="hint">2 to 5 minutes · 7 to 13 more model calls</span></div>
+    <div id="betterBody" class="start"><button type="button" class="btn btn-primary btn-lg" id="betterBtn">Make it a lot better</button><span class="hint">2 to 8 minutes · 7 to 16 more model calls</span></div>
   </div>`;
 }
 
@@ -1241,12 +1245,16 @@ function revisionHtml(v) {
   const jd = v.checks.judge || {};
   const share = jd.category_share || {};
   const won = CATS.filter(c => share[c] > 0.5), lost = CATS.filter(c => share[c] < 0.5);
-  const nq = v.questions.length;
+  const nq = v.questions.length, f = filledOf(v), mu = f ? f.made_up : [], nmu = detailCount(mu);
+  const fillErr = v.filled && !f ? v.filled.error : "", fc = (f && f.checks.fact_check) || {};
+  // Brackets still in the essay on screen: all of them without a fill, or the ones the fill couldn't answer.
+  const open = f ? v.questions.filter(q => f.draft.includes(q.placeholder)) : v.questions;
   const checked = v.verified
     ? html`<p>A blind judge preferred this revision over your original in both orders${won.length ? `, winning on ${won.join(", ")}` : ""}${lost.length ? ` and losing on ${lost.join(", ")}` : ""}. ${jd.decisive_difference || ""}</p>
         ${v.checks.vs_polish ? html`<p>It also beat a polish-only rewrite of your original in both orders, so the gain is more than smoother sentences.</p>` : ""}
         ${jd.voice_share > 0.5 ? html`<p>The judge also found that the revision sounds more like one specific real teenager.</p>` : ""}
-        ${nq ? html`<p class="hint">This assumes you answer the ${nq} bracketed question${nq > 1 ? "s" : ""} with true details.</p>` : ""}`
+        ${nq ? html`<p class="hint">${f ? `The judge saw ${nq === 1 ? "a question" : "questions"} where the highlighted details are now, and assumed true answers. This holds once you replace ${nmu === 1 ? "the made-up detail" : "the made-up details"} with what really happened.`
+          : `This assumes you answer the ${nq} bracketed question${nq > 1 ? "s" : ""} with true details.`}</p>` : ""}`
     : html`<p>These checks failed:</p><ul>${v.checks.failures.map(f => html`<li>${f}</li>`)}</ul>`;
   const d = v.diagnosis, vc = v.voice;
   const moves = v.moves.map(m => html`<li class="move">
@@ -1256,7 +1264,7 @@ function revisionHtml(v) {
       <p><b>Do this:</b> ${m.change}</p>
       ${m.rewrite ? html`<p class="move-new">${withAsks(m.rewrite)}</p>` : ""}
       <p class="move-eff">${m.reader_effect}</p></li>`);
-  const qs = v.questions.map(q => html`<li><mark class="ask">${q.placeholder}</mark><p>${q.question}</p></li>`);
+  const qs = open.map(q => html`<li><mark class="ask">${q.placeholder}</mark><p>${q.question}</p></li>`);
   const keep = (jd.keep || []).map(k => html`<li class="issue"><blockquote class="quote">${k.quote}</blockquote><p class="issue-w">${k.why}</p></li>`);
   // The edited essay comes first and alone; the reasoning stays one click away for anyone who wants it.
   return html`<div class="rev-head">
@@ -1264,8 +1272,12 @@ function revisionHtml(v) {
       <p class="rev-status">${v.verified
         ? html`<span class="chip chip-win">${icon("check")}Verified</span><span>A blind judge preferred it over your original and over a polish-only rewrite, in both orders.</span>`
         : html`<span class="chip chip-split">Not verified</span><span>Use it as a starting point. The checks it failed are under “Why these changes”.</span>`}</p>
-      ${nq ? html`<p class="hint">Replace the ${nq} highlighted bracket${nq > 1 ? "s" : ""} with true details, or cut ${nq > 1 ? "those lines" : "that line"}.</p>` : ""}
+      ${open.length ? html`<p class="hint">${f ? `${plural(open.length, "bracket")} couldn't be filled in. Answer ${open.length > 1 ? "them" : "it"}`
+        : `Replace the ${open.length} highlighted bracket${open.length > 1 ? "s" : ""} with true details`}, or cut ${open.length > 1 ? "those lines" : "that line"}.</p>` : ""}
     </div>
+    ${nmu ? html`<div class="notice notice-warn">${icon("alert")}<div><b>GaryAdmit made up ${plural(nmu, "detail")} to fill the blanks.</b> ${nmu === 1 ? "It's" : "They're"} highlighted in the essay below. Replace each one with what really happened, or cut it, before you use this essay.</div></div>` : ""}
+    ${fc.error ? html`<div class="notice notice-warn">${icon("alert")}<div>The check for made-up details that GaryAdmit didn't mark couldn't run (${fc.error}), so read every filled-in line against what really happened.</div></div>` : ""}
+    ${fillErr ? html`<div class="notice notice-warn">${icon("alert")}<div>GaryAdmit couldn't fill in the brackets (${fillErr}), so they're still questions for you.</div></div>` : ""}
     <div class="doc">
       <div class="doc-bar">
         <div class="seg-sm" role="group" aria-label="Show the essay or the changes"><button type="button" class="on" data-view="clean" aria-pressed="true">Essay</button><button type="button" data-view="changes" aria-pressed="false">Changes</button></div>
@@ -1274,8 +1286,9 @@ function revisionHtml(v) {
         <button type="button" class="btn btn-ghost btn-sm" id="copyDraft" data-label="Copy">${icon("copy")}<span class="label">Copy</span></button>
         <button type="button" class="btn btn-ghost btn-sm" id="editDraft">${icon("edit")}<span class="label">Edit and re-score</span></button>
       </div>
-      <div class="draft" id="draftView">${withAsks(v.draft)}</div>
+      <div class="draft" id="draftView">${filledView(v)}</div>
     </div>
+    ${mu.length ? html`<section class="section"><div class="section-head"><h3>Check these details</h3><span class="aside">Made up by GaryAdmit · select one to find it</span></div><ul class="madeups">${madeUpItems(mu)}</ul></section>` : ""}
     ${qs.length ? html`<section class="section"><div class="section-head"><h3>Fill in the brackets</h3><span class="aside">Answer from memory, or cut the line</span></div><ul class="asks">${qs}</ul></section>` : ""}
     <details class="disclosure why"><summary>Why these changes</summary><div class="disclosure-body">
       <section class="sub"><h3>How it was checked</h3>${checked}</section>
@@ -1299,7 +1312,7 @@ function paintRevising(p) {
   if (!body) return;
   let list = body.querySelector(".steps");
   if (!list) {
-    mount(body, html`<ol class="steps" tabindex="-1" role="log" aria-live="polite" aria-label="Rewrite progress"></ol><p class="hint">This takes 2 to 5 minutes. The other tabs stay open to you meanwhile.</p>`);
+    mount(body, html`<ol class="steps" tabindex="-1" role="log" aria-live="polite" aria-label="Rewrite progress"></ol><p class="hint">This takes 2 to 8 minutes. The other tabs stay open to you meanwhile.</p>`);
     list = body.querySelector(".steps");
     if (lostFocus()) list.focus({ preventScroll: true });  // the start button that had focus is gone
   }
@@ -1327,7 +1340,7 @@ async function startRevision() {
     mount($("#better"), revisionHtml(v));
     if (refocus || lostFocus()) $("#better h2").focus({ preventScroll: true });
     // Until the chat has changed anything, it continues from the newest edit.
-    if (versions.length === 1) { versions = [v.draft]; showWorking(); }
+    if (versions.length === 1) { versions = [shownDraft(v)]; showWorking(); }
     saveWorking(view);
     const cta = $("#rewriteCta .label");
     if (cta) cta.textContent = "See the edited essay";
@@ -1394,7 +1407,8 @@ function addAppliedTab(r) {
   $("#tab-edits").after(fragment(appliedPanelHtml(r)));
 }
 
-function madeUpHtml(v) {
+// `gap` renders the text between the made-up details, such as a bracket the fill left open.
+function madeUpHtml(v, gap = s => s) {
   // The offsets count code points, as Python does; a JS string counts UTF-16 units, so an emoji would shift them.
   const cp = Array.from(v.draft), out = [];
   let pos = 0;
@@ -1402,14 +1416,18 @@ function madeUpHtml(v) {
     if (m.start < pos || m.end > cp.length) return;  // the server never overlaps them; a hand-edited file might
     const text = cp.slice(m.start, m.end).join("");
     if (text !== m.text) return;  // a wrong highlight is worse than none; "Check these details" still lists it
-    out.push(cp.slice(pos, m.start).join(""));
+    out.push(gap(cp.slice(pos, m.start).join("")));
     const tip = m.source === "check" && !m.stands_for ? "Not in your original" : `Made up: stands in for ${m.stands_for || "a detail only you know"}`;
     out.push(html`<mark class="madeup" data-m="${k}" title="${tip}">${text}</mark>`);
     pos = m.end;
   });
-  out.push(cp.slice(pos).join(""));
+  out.push(gap(cp.slice(pos).join("")));
   return out;
 }
+const madeUpItems = mu => mu.map((m, k) => html`<li><button type="button" class="madeup-item" data-m="${k}"><mark class="madeup">${m.text}</mark>
+    <span class="madeup-for">${m.source !== "check" ? `Stands in for ${m.stands_for || "a detail only you know"}.`
+      : m.stands_for ? `Stands in for ${m.stands_for}. GaryAdmit marked part of it; the check for made-up details found the rest. ${m.why || ""}`
+      : `GaryAdmit didn't mark this itself; the check for made-up details found it. ${m.why || ""}`}</span></button></li>`);
 
 function appliedHtml(v, err) {
   const c = v.counts, mu = v.made_up, fc = v.checks.fact_check || {}, nmu = detailCount(mu);
@@ -1419,10 +1437,7 @@ function appliedHtml(v, err) {
   const status = [`Made ${c.made} of ${plural(v.edits.length, "line edit")}.`];
   if (c.unchanged) status.push(`${c.unchanged} left as written.`);
   if (c.not_made) status.push(`${c.not_made} couldn't be made; “Edit by edit” says why.`);
-  const items = mu.map((m, k) => html`<li><button type="button" class="madeup-item" data-m="${k}"><mark class="madeup">${m.text}</mark>
-      <span class="madeup-for">${m.source !== "check" ? `Stands in for ${m.stands_for || "a detail only you know"}.`
-        : m.stands_for ? `Stands in for ${m.stands_for}. GaryAdmit marked part of it; the check for made-up details found the rest. ${m.why || ""}`
-        : `GaryAdmit didn't mark this itself; the check for made-up details found it. ${m.why || ""}`}</span></button></li>`);
+  const items = madeUpItems(mu);
   const rows = v.edits.map(e => html`<li class="move"><div><span class="chip chip-neutral">${KIND[e.kind] || e.kind}</span></div>
       ${e.status === "made"
         ? html`<p class="move-target">“${e.original}”</p>${e.text ? html`<p class="move-new">${e.text}</p>` : html`<p><b>Cut.</b></p>`}`
@@ -1519,11 +1534,19 @@ function setAppliedView(name) {
   mount(box, name === "clean" ? html`${madeUpHtml(v)}` : html`${diffHtml(v.diff)}`);
   document.querySelectorAll("#applied [data-view]").forEach(b => { const on = b.dataset.view === name; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
 }
-function showMadeUp(k) {
-  const clean = $('#applied [data-view="clean"]');
-  if (clean && !clean.classList.contains("on")) setAppliedView("clean");
-  document.querySelectorAll("#appliedView mark.madeup.active").forEach(m => { m.classList.remove("active"); m.removeAttribute("tabindex"); });
-  const m = $(`#appliedView mark.madeup[data-m="${CSS.escape(String(k))}"]`);
+function setDraftView(name) {
+  const v = current && current.revision, box = $("#draftView");
+  if (!v || !box) return;
+  mount(box, name === "clean" ? html`${filledView(v)}` : html`${diffHtml((filledOf(v) || v).diff)}`);
+  document.querySelectorAll("#better [data-view]").forEach(b => { const on = b.dataset.view === name; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+}
+// `where` is "applied" for the line edits made at once, or "better" for the rewrite with its blanks filled in.
+function showMadeUp(k, where) {
+  const box = where === "better" ? "#draftView" : "#appliedView";
+  const clean = $(`#${where} [data-view="clean"]`);
+  if (clean && !clean.classList.contains("on")) (where === "better" ? setDraftView : setAppliedView)("clean");
+  document.querySelectorAll(`${box} mark.madeup.active`).forEach(m => { m.classList.remove("active"); m.removeAttribute("tabindex"); });
+  const m = $(`${box} mark.madeup[data-m="${CSS.escape(String(k))}"]`);
   if (!m) return;
   m.classList.add("active");
   m.scrollIntoView({ block: "center", behavior: smooth() });
@@ -1703,7 +1726,7 @@ function initChat(r) {
   versions = [r.essay];
   versionMadeUp = savedMadeUp(r);
   replay(turns.slice(0, early));
-  if (rev && versions.length === 1) versions = [rev.draft];
+  if (rev && versions.length === 1) versions = [shownDraft(rev)];
   replay(turns.slice(early));
   const w = savedWorking(r);
   if (w != null) {
@@ -2092,18 +2115,17 @@ document.addEventListener("click", e => {
   const card = t.closest(".edit"); if (card) activate(card.dataset.i, "essay");
   if (t.closest("#reviseBtn") && current) loadIntoCompose(current.essay, "the reviewed essay", current.meta);
   if (t.closest("#betterBtn")) startRevision();
-  const view = t.closest("#better [data-view]");
-  if (view && current && current.revision) {
-    const v = current.revision;
-    mount($("#draftView"), view.dataset.view === "clean" ? html`${withAsks(v.draft)}` : html`${diffHtml(v.diff)}`);
-    view.parentElement.querySelectorAll("[data-view]").forEach(b => { b.classList.toggle("on", b === view); b.setAttribute("aria-pressed", String(b === view)); });
-  }
+  const dview = t.closest("#better [data-view]"); if (dview) setDraftView(dview.dataset.view);
+  const filled = current && filledOf(current.revision), nfill = filled ? detailCount(filled.made_up) : 0;
   const copy = t.closest("#copyDraft");
-  if (copy && current && current.revision) copyText(copy, current.revision.draft);
-  if (t.closest("#editDraft") && current && current.revision) loadIntoCompose(current.revision.draft, "the edited essay", current.meta);
+  if (copy && current && current.revision) copyText(copy, shownDraft(current.revision), nfill ? `It still has ${plural(nfill, "made-up detail")} to replace.` : "");
+  if (t.closest("#editDraft") && current && current.revision) {
+    loadIntoCompose(shownDraft(current.revision), "the edited essay", current.meta);
+    if (nfill) toast(`It still has ${plural(nfill, "made-up detail")}. Replace ${nfill === 1 ? "it" : "them"} before you re-score.`);
+  }
   if (t.closest("[data-apply]")) startApply();
   const aview = t.closest("#applied [data-view]"); if (aview) setAppliedView(aview.dataset.view);
-  const made = t.closest(".madeup-item"); if (made) showMadeUp(made.dataset.m);
+  const made = t.closest(".madeup-item"); if (made) showMadeUp(made.dataset.m, made.closest("#better") ? "better" : "applied");
   const acopy = t.closest("#appliedCopy");
   if (acopy && current && current.applied) {
     const n = detailCount(current.applied.made_up);
@@ -2131,7 +2153,8 @@ document.addEventListener("click", e => {
   }
   const chatCopy = t.closest("#chatCopy");
   if (chatCopy) {
-    const texts = [...(current && current.applied ? current.applied.made_up.map(m => m.text) : []), ...versionMadeUp];
+    const texts = [...(current && current.applied ? current.applied.made_up.map(m => m.text) : []),
+      ...(filled ? filled.made_up.map(m => m.text) : []), ...versionMadeUp];
     const w = working(), n = new Set(texts.filter(x => x && w.includes(x))).size;
     copyText(chatCopy, w, n ? `It still has ${plural(n, "made-up detail")} to replace.` : "");
   }

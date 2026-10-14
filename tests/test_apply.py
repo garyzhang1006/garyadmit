@@ -531,3 +531,46 @@ def test_a_review_whose_edits_all_only_partly_match_says_so(fake):
         ap.apply_all(ESSAY, [{**edit(head, "rewrite", "x."), "partial": True}], meta={})
     with pytest.raises(ValueError, match="only partly match your essay"):
         ap.apply_all(ESSAY, [edit(head, "rewrite", "I still can't pleat a dumpling.")], meta={})
+
+
+def test_a_revisions_brackets_are_filled_with_marked_details(fake):
+    from garyadmit import revise as rv
+    v, said = rv.revise(ESSAY), []
+    f = ap.fill_brackets(v, progress=said.append)
+    d = f["draft"]
+    assert "[" not in d and "served the good ones to guests. She hummed as she worked.\n\nLast spring" in d
+    assert [(m["text"], m["source"], m["edit"]) for m in f["made_up"]] == [("hummed", "editor", 0)]
+    assert all(d[m["start"]:m["end"]] == m["text"] for m in f["made_up"])
+    assert len(fake.apply_prompts) == 1 and '<edit id="0">[what she said about the pleats]</edit>' in fake.apply_prompts[0]
+    assert "What did she say?" in fake.apply_prompts[0]
+    assert f["counts"] == {"made": 1, "unchanged": 0, "not_made": 0} and f["checks"]["fact_check"]["ran"]
+    # The changes are shown against the student's original, as the revision's are.
+    assert "".join(s["text"] for s in f["diff"]["segments"] if s["op"] != "delete") == d
+    assert any("Ever since I was little" in s["text"] for s in f["diff"]["segments"] if s["op"] == "delete")
+    assert said[0].startswith("Filling in 1 bracketed question") and said[-1] == "Filled in 1 of 1 bracketed question"
+
+
+def test_a_fill_that_keeps_the_question_is_asked_again_and_the_students_own_brackets_stay(fake):
+    essay = ESSAY.replace("She never corrected me.", "She never corrected me [not once].")
+    rev = {"essay": essay, "draft": essay + "\n\n[What did she say when I left?]", "meta": {"word_limit": 650},
+           "questions": [{"placeholder": "[What did she say when I left?]", "question": "What were her words?"}]}
+    fake.apply_answers = [[{"id": 0, "text": "[What did she say when I left?]", "made_up": []}],
+                          [{"id": 0, "text": "“Come back Sunday,” she said.",
+                            "made_up": [{"text": "“Come back Sunday,” she said.", "stands_for": "her words"}]}]]
+    f = ap.fill_brackets(rev)
+    assert len(fake.apply_prompts) == 2 and "square brackets" in fake.apply_prompts[1]
+    assert "What were her words?" in fake.apply_prompts[0] and "[not once]</edit>" not in fake.apply_prompts[0]
+    assert f["draft"].endswith("“Come back Sunday,” she said.") and "[not once]" in f["draft"] and "[What" not in f["draft"]
+    assert f["counts"]["made"] == 1 and f["made_up"][0]["stands_for"] == "her words"
+    assert ap.fill_brackets({**rev, "draft": essay}) is None  # only the student's own bracket: nothing to fill
+
+
+def test_a_fill_that_fails_keeps_the_checked_revision(fake, monkeypatch):
+    from garyadmit import server
+
+    def boom(*a, **k):
+        raise llm.LLMError("editor timed out")
+
+    monkeypatch.setattr(server, "fill_brackets", boom)
+    v = server._do_revise({"essay": ESSAY, "word_limit": "650"}, lambda s: None)
+    assert v["verified"] and v["filled"] == {"error": "editor timed out"} and "[what she said about the pleats]" in v["draft"]

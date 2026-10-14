@@ -13,7 +13,7 @@ from pathlib import Path
 from . import llm
 from . import review as review_mod
 from .review import get_corpus, review
-from .apply import apply_all, flag_partial
+from .apply import apply_all, fill_brackets, flag_partial
 from .chat import chat
 from .revise import revise
 
@@ -64,12 +64,20 @@ def _do_revise(req: dict, progress) -> dict:
             raise ValueError("That saved review was not found. Run the review again, then ask for a revision.")
         saved = _load_saved(path)
     meta = saved["meta"] if saved else _meta_from(req)
+    model = "sonnet" if req.get("fast") else None
     result = revise(
         saved["essay"] if saved else req.get("essay", ""),
         prompt=meta.get("prompt", ""), essay_type=meta.get("essay_type", "personal"),
         word_limit=meta.get("word_limit"), school=meta.get("school", ""),
-        review=saved, model="sonnet" if req.get("fast") else None, progress=progress,
+        review=saved, model=model, progress=progress,
     )
+    # The page shows the essay with its blanks filled in; a fill that fails still leaves the checked revision.
+    try:
+        filled = fill_brackets(result, model=model, progress=progress)
+    except (llm.LLMError, ValueError) as err:
+        filled = {"error": str(err)}
+    if filled:
+        result["filled"] = filled
     if path:
         with _lock:  # two revisions of one review finishing together must not interleave writes
             current = json.loads(path.read_text())

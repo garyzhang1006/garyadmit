@@ -9,8 +9,9 @@
 Where an edit asks for a detail only the student knows, the editor writes one and
 declares it, and a fact check looks for any it did not declare, so made-up details
 are marked for the student to replace. This is the one place GaryAdmit makes things
-up on purpose. The result never says the essay got better; it says which changes
-were made and what was invented.
+up on purpose, and fill_brackets sends a rewrite's bracketed questions through it too.
+The result never says the essay got better; it says which changes were made and
+what was invented.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ from typing import Callable
 
 from . import llm, rubric, scoring
 from .lint import word_count
-from .revise import diff_segments, fidelity
+from .revise import BRACKET, diff_segments, fidelity
 
 # The editor's dashes become commas: em dashes read as AI-polished prose.
 DASH = re.compile(r"\s*—\s*|\s+--\s+")
@@ -382,11 +383,14 @@ def apply_all(
     meta: dict,
     model: str | None = None,
     max_rounds: int = 2,
+    own: str | None = None,
     progress: Callable[[str], None] | None = None,
 ) -> dict:
     """Make every usable line edit. `edits` are a saved review's line edits, whose offsets index `essay`.
-    Raises ValueError when there is nothing to make."""
+    `own` is the student's own text when `essay` is a draft GaryAdmit wrote: an answer may keep only the square
+    brackets the student wrote. Raises ValueError when there is nothing to make."""
     essay = unicodedata.normalize("NFC", (essay or "").strip().replace("\r\n", "\n"))
+    own = essay if own is None else unicodedata.normalize("NFC", own)
     if len(essay.split()) < 50:
         raise ValueError("That is under 50 words. Paste the full essay.")
     located, lost = _located(essay, edits if isinstance(edits, list) else [])
@@ -433,7 +437,7 @@ def apply_all(
             a = answers.get(x["i"])
             text = str(a.get("text") or "") if a is not None else ""
             empty = not text.strip() and not _asks_cut(x["suggestion"])
-            why = "missing" if a is None else "empty" if empty else "bracket" if _asks(text, essay) else ""
+            why = "missing" if a is None else "empty" if empty else "bracket" if _asks(text, own) else ""
             if why or a is None:
                 still.append(x)
                 notes.append(f"- id {x['i']}: {FEEDBACK[why]}")
@@ -511,3 +515,28 @@ def apply_all(
         "usage": {k: round(llm.usage[k] - usage_before.get(k, 0), 4) for k in llm.usage},
         "models": {"editor": model},
     }
+
+
+def fill_brackets(revision: dict, *, model: str | None = None,
+                  progress: Callable[[str], None] | None = None) -> dict | None:
+    """The revision with a made-up detail in place of each bracketed question, marked for the student to replace.
+    The revision's checks ran with the brackets in and still describe it, as if each were answered truthfully;
+    this only saves the student a blank. None when the draft asks nothing."""
+    # Normalized as apply_all normalizes it, so the offsets below index the text it edits.
+    essay, draft = revision["essay"], unicodedata.normalize("NFC", revision["draft"].strip().replace("\r\n", "\n"))
+    asked = {q.get("placeholder"): q.get("question") for q in revision.get("questions") or [] if isinstance(q, dict)}
+    edits = [{"kind": "comment", "original": m.group(0), "start": m.start(), "end": m.end(),
+              "problem": "The revision leaves a gap for a detail only the student knows.",
+              "suggestion": "Replace this bracketed question with the detail itself, written so the sentence reads as "
+                            f"finished prose. The question: {asked.get(m.group(0)) or m.group(0)[1:-1]}"}
+             for m in BRACKET.finditer(draft) if m.group(0) not in essay]  # a bracket the student wrote is theirs
+    if not edits:
+        return None
+    say = progress or (lambda s: None)
+    say(f"Filling in {_n(len(edits), 'bracketed question')} with details GaryAdmit makes up and marks, "
+        "then checking for any it didn't mark")
+    v = apply_all(draft, edits, meta=revision["meta"], model=model, own=essay)
+    # Changes are shown against the student's original, as the revision's are.
+    v["diff"] = diff_segments(essay, v["draft"])
+    say(f"Filled in {v['counts']['made']} of {_n(len(edits), 'bracketed question')}")
+    return v

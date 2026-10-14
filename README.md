@@ -54,6 +54,8 @@ After a review, press **Make it a lot better** (or run `garyadmit revise`). It w
 
 The reviser is told never to invent facts about your life. Where it needs a detail only you know, it asks in square brackets, such as `[What did you say back to her?]`, at most four times.
 
+On the web page you don't have to answer them. Once the checks below finish, the editor from **Make every line edit** writes a plain stand-in for each question (a quote, a name, a short moment) and lists every detail it made up, and the same invented-fact check reads the filled-in essay for any it didn't list. The page shows that version with each made-up detail highlighted next to what it stands in for, and Copy, **Edit and re-score**, and the chat all start from it. The checks ran on the version with the questions, so a "Verified" draft stays verified only once you swap each stand-in for what really happened. `garyadmit revise` in the terminal still prints the questions.
+
 It only calls a draft better after these checks pass:
 
 - A blind judge compares the draft with your original in both orders, and the draft has to win both times. The judge is told not to reward polish, and it reports which categories each draft won and anything your original did better.
@@ -63,13 +65,13 @@ It only calls a draft better after these checks pass:
 
 Claude runs every one of these checks, so they catch a lot and miss some. Read the draft line by line against what happened before you use any of it.
 
-A draft that fails gets one more round with the failures spelled out. If it still fails, you see it marked NOT VERIFIED, with the reasons. A revision takes two to five minutes and seven to thirteen model calls. Benchmark results, including where the check failed, are in `docs/revise-bench.md`.
+A draft that fails gets one more round with the failures spelled out. If it still fails, you see it marked NOT VERIFIED, with the reasons. A revision takes two to five minutes and seven to thirteen model calls, and filling in its questions on the web page adds up to three more calls. Benchmark results, including where the check failed, are in `docs/revise-bench.md`.
 
 ## Make every line edit
 
 The **Line edits** tab has a **Make all N changes** button, and the Feedback tab has one too. It makes the line edits all at once and opens a **Changes made** tab with the result: the essay with the changes in, a view of what changed against your original, a list of details to check, and each edit's status. An edit is left out when its passage is gone from the essay, when it overlaps an earlier one, or when the line editor's quote only partly matched your essay. It is also left out when the editor's answer was still unusable after one retry (skipped, empty, or still asking a question) or the retry itself failed, and in every case the tab says why. A note that only you can carry out, such as moving a paragraph, is left as written with a word on what to do.
 
-Cuts and rewrites go in exactly as the line editor wrote them. Notes, and rewrites that ask for something only you know, such as `[name the song your dad hummed]`, go to an editor that writes the missing detail itself: a quote, a name, a number, a short scene. This is the one place GaryAdmit makes things up on purpose, so the editor has to list every detail it wrote, and each one is highlighted in the essay with what it stands in for. The invented-fact check from the rewrite then reads the whole essay and highlights anything new the editor did not list, including facts the line edits themselves added. Claude runs that check too, so it can miss one. Replace each highlighted detail with what really happened, or cut it, before you use the essay.
+Cuts and rewrites go in exactly as the line editor wrote them. Notes, and rewrites that ask for something only you know, such as `[name the song your dad hummed]`, go to an editor that writes the missing detail itself: a quote, a name, a number, a short scene. This editor, also used to fill in a rewrite's questions, is the one place GaryAdmit makes things up on purpose, so it has to list every detail it wrote, and each one is highlighted in the essay with what it stands in for. The invented-fact check from the rewrite then reads the whole essay and highlights anything new the editor did not list, including facts the line edits themselves added. Claude runs that check too, so it can miss one. Replace each highlighted detail with what really happened, or cut it, before you use the essay.
 
 Nothing here judges whether the essay got better. To find out, replace the made-up details first, then press **Edit and re-score**, which puts the new version in the essay box for a fresh review. A score for an essay that still holds invented details says little about yours.
 

@@ -356,8 +356,11 @@ def test_server_revise_job_writes_back_and_refuses_cross_site(fake):
         v = wait(post("/api/revise", {"review_id": r["id"]}))
         assert v["status"] == "done", v.get("error")
         assert v["result"]["used_review"] and v["result"]["verified"]
+        assert "[" not in v["result"]["filled"]["draft"] and v["result"]["filled"]["made_up"]
+        assert any(p.startswith("Filling in 1 bracketed question") for p in v["progress"])
         saved = json.loads(urllib.request.urlopen(f"{base}/api/history/{r['id']}").read())
         assert saved["revision"]["draft"] == v["result"]["draft"] and saved["id"] == r["id"]
+        assert saved["revision"]["filled"]["draft"] == v["result"]["filled"]["draft"]
         plain = wait(post("/api/revise", {"essay": ESSAY, "word_limit": "650"}))
         assert plain["status"] == "done" and not plain["result"]["used_review"]
         missing = wait(post("/api/revise", {"review_id": "20000101-000000"}))
